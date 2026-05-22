@@ -32,7 +32,7 @@ function getGeminiClient(): GoogleGenAI {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const port = Number(process.env.PORT) || 3080;
 
   // Middleware for body parsing
   app.use(express.json());
@@ -100,7 +100,10 @@ async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     console.log("Starting server in development mode...");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        allowedHosts: ['erp.lenakids.com'],
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -113,8 +116,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Server is running at http://localhost:${port}`);
   });
 }
 

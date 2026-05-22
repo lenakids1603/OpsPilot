@@ -12,11 +12,16 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      host: '127.0.0.1',
+      port: 3080,
+      allowedHosts: ['erp.lenakids.com'],
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+    preview: {
+      host: '127.0.0.1',
+      port: 3080,
+      allowedHosts: ['erp.lenakids.com'],
     },
   };
 });
