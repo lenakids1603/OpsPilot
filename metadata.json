@@ -1,0 +1,6 @@
+{
+  "name": "Lenakids OpsPilot",
+  "description": "Lenakids OpsPilot - Business Insights & Automation Hub. Includes automated data dashboards, department assistance utilities, and workflow runners powered by Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
