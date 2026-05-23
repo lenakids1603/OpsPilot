@@ -33,7 +33,7 @@ export function TodayDataView() {
         qty: Math.floor(Math.random() * 3) + 1,
         amount: Math.random() > 0.5 ? 198 : 288,
         status: "已自动回单",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
       setOrders(prev => [newOrder, ...prev]);
     }, 1200);
@@ -49,7 +49,7 @@ export function TodayDataView() {
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="flex items-center space-x-2 px-3.5 py-1.8 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-400 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+          className="flex items-center space-x-2 px-3.5 py-1.8 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-400 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
           <span>{syncing ? "秒级流式读取中..." : "手动数据秒级同步"}</span>
@@ -76,7 +76,7 @@ export function TodayDataView() {
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
           <span className="text-xs font-bold text-slate-800">最新抓取多店铺订单流 (当前：{orders.length} 笔)</span>
-          <span className="text-[10px] font-mono text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-md font-bold">● ERP 实时监听套接字已联网</span>
+          <span className="text-[10px] font-mono text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-md font-bold font-sans">● ERP 实时监听套接字已联网</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -213,7 +213,7 @@ export function ExceptionAlertsView() {
               ) : (
                 <button
                   onClick={() => handleResolve(al.id)}
-                  className="px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 text-xs font-bold transition-all shadow-2xs"
+                  className="px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 text-xs font-bold transition-all shadow-2xs cursor-pointer"
                 >
                   立即解决排障
                 </button>
@@ -278,7 +278,7 @@ export function PeriodicalReviewView() {
         <button
           onClick={handleGenerate}
           disabled={generating}
-          className="flex-shrink-0 flex items-center space-x-2 px-4 py-2.5 bg-[#002045] text-white hover:bg-[#002045]/90 rounded-lg text-xs font-bold transition-all shadow-xs"
+          className="flex-shrink-0 flex items-center space-x-2 px-4 py-2.5 bg-[#002045] text-white hover:bg-[#002045]/90 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
         >
           <Sparkles className="w-4 h-4 text-sky-400 animate-pulse" />
           <span>{generating ? "大语言模型流式提炼中..." : "一键生成集团五月度分析简报"}</span>
@@ -348,7 +348,7 @@ export function ShortcutEntriesView() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Quick SKU Add form */}
         <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs">
-          <h3 className="text-sm font-bold text-slate-800 mb-4">一键创建新 SKU 主款式资料</h3>
+          <h3 className="text-sm font-bold text-slate-800 mb-4 font-sans">一键创建新 SKU 主款式资料</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-[11px] font-bold text-slate-500 block mb-1.5">商品全称 / 企划名称</label>
@@ -357,7 +357,7 @@ export function ShortcutEntriesView() {
                 value={skuName}
                 onChange={e => setSkuName(e.target.value)}
                 placeholder="例如: 盛夏清爽透气网眼儿童爬服 2 件装"
-                className="w-full bg-[#f8f9ff] text-xs font-medium text-slate-800 placeholder:text-slate-400 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#f8f9ff] text-xs font-medium text-slate-800 placeholder:text-slate-400 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-sky-500 font-sans font-semibold"
                 required
               />
             </div>
@@ -378,18 +378,18 @@ export function ShortcutEntriesView() {
                 <select
                   value={skuCategory}
                   onChange={e => setSkuCategory(e.target.value)}
-                  className="w-full bg-[#f8f9ff] text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-sky-500"
+                  className="w-full bg-[#f8f9ff] text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-sky-500 font-sans font-semibold"
                 >
-                  <option value="连体衣">连体两用衣服</option>
-                  <option value="睡袋">防风保暖睡袋</option>
-                  <option value="鞋袜">精编防滑童袜</option>
-                  <option value="配饰">抱被毛巾用品</option>
+                  <option value="连体衣 font-sans">连体两用衣服</option>
+                  <option value="睡袋 font-sans">防风保暖睡袋</option>
+                  <option value="鞋袜 font-sans">精编防滑童袜</option>
+                  <option value="配饰 font-sans">抱被毛巾用品</option>
                 </select>
               </div>
             </div>
             <button
               type="submit"
-              className="w-full bg-[#002045] hover:bg-[#002045]/90 text-white font-bold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-xs"
+              className="w-full bg-[#002045] hover:bg-[#002045]/90 text-white font-bold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{added ? "款式创建成功并打通聚水潭!" : "确认建立并投产企划款式"}</span>
@@ -607,7 +607,7 @@ export function HeroStagnantView() {
                 <div className="flex justify-between text-[11px] text-slate-500 font-mono">
                   <span className="text-rose-600 font-bold">{s.age}</span>
                   <span>积压存货: <strong>{s.stock}</strong></span>
-                  <span className="px-1.5 py-0.5 bg-rose-100 text-rose-800 rounded font-bold">{s.solution}</span>
+                  <span className="px-1.5 py-0.5 bg-rose-105 text-rose-800 rounded font-bold">{s.solution}</span>
                 </div>
               </div>
             ))}
@@ -652,7 +652,7 @@ export function InventoryTurnoverView() {
                 type="number"
                 value={dailySales}
                 onChange={e => setDailySales(e.target.value)}
-                className="w-full bg-[#f8f9ff] text-xs font-bold p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#f8f9ff] text-xs font-bold p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500 font-mono"
               />
             </div>
             <div>
@@ -661,7 +661,7 @@ export function InventoryTurnoverView() {
                 type="number"
                 value={leadDays}
                 onChange={e => setLeadDays(e.target.value)}
-                className="w-full bg-[#f8f9ff] text-xs font-bold p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#f8f9ff] text-xs font-bold p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500 font-mono"
               />
             </div>
             <div>
@@ -670,7 +670,7 @@ export function InventoryTurnoverView() {
                 type="number"
                 value={safetyDays}
                 onChange={e => setSafetyDays(e.target.value)}
-                className="w-full bg-[#f8f9ff] text-xs font-bold p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#f8f9ff] text-xs font-bold p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500 font-mono"
               />
             </div>
           </div>
@@ -678,9 +678,9 @@ export function InventoryTurnoverView() {
 
         <div className="bg-[#002045] text-white p-6 rounded-xl md:col-span-2 flex flex-col justify-between shadow-xs">
           <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-sky-450 block">智能核定推荐补货阈值</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-sky-400 block">智能核定推荐补货阈值</span>
             <div className="mt-4 flex items-baseline space-x-1">
-              <span className="text-4xl font-black font-mono text-sky-400">{recommended}</span>
+              <span className="text-4xl font-black font-mono text-sky-450">{recommended}</span>
               <span className="text-xs text-slate-300 font-bold">件</span>
             </div>
             <p className="text-xs text-slate-300 mt-4 leading-normal font-sans">
@@ -688,9 +688,9 @@ export function InventoryTurnoverView() {
               采购系统应当自动建议给关联供应商触发全新的补货 PO 货单。以防销售在未来发生中途断码。
             </p>
           </div>
-          <div className="border-t border-white/10 pt-4 mt-6 flex justify-between items-center text-[11px] text-slate-400">
+          <div className="border-t border-white/10 pt-4 mt-6 flex justify-between items-center text-[11px] text-slate-400 font-mono">
             <span>推荐公式: (日均销售 × 交货天数) + (日均销售 × 安全天数)</span>
-            <span className="font-mono text-emerald-450">✓ 智能参数校验已通过</span>
+            <span className="text-emerald-400 font-bold">✓ 智能参数校验已通过</span>
           </div>
         </div>
       </div>
@@ -750,7 +750,7 @@ export function ProcurementPOView() {
                   <td className="p-4 font-mono font-bold text-slate-600">{p.cost}</td>
                   <td className="p-4">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      p.status === "已全部入库归档" ? "bg-emerald-55 text-white" :
+                      p.status === "已全部入库归档" ? "bg-emerald-500 text-white" :
                       p.status === "部分收妥入存" ? "bg-cyan-50 text-cyan-600" :
                       p.status === "已确认待到货" ? "bg-sky-50 text-sky-600" : "bg-slate-100 text-slate-600"
                     }`}>
@@ -759,11 +759,11 @@ export function ProcurementPOView() {
                   </td>
                   <td className="p-4 text-center">
                     {p.status === "已全部入库归档" ? (
-                      <span className="text-[10px] text-slate-400 font-medium">审批已完结</span>
+                      <span className="text-[10px] text-slate-400 font-medium font-mono">审批已完结</span>
                     ) : (
                       <button
                         onClick={() => handleProgress(p.id)}
-                        className="px-2.5 py-1.2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold transition-all shadow-2xs"
+                        className="px-2.5 py-1.2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold transition-all shadow-2xs cursor-pointer"
                       >
                         推进至下一步骤
                       </button>
@@ -856,17 +856,17 @@ export function LogisticsManifestView() {
                 <div key={idx} className="relative">
                   {/* Circle dot marker */}
                   <span className={`absolute -left-6.5 top-1 w-2.5 h-2.5 rounded-full border border-white ${
-                    idx === 0 ? "bg-sky-500 ring-4 ring-sky-100" : "bg-slate-350"
+                    idx === 0 ? "bg-sky-500 ring-4 ring-sky-100" : "bg-slate-300"
                   }`}></span>
                   <p className="text-[11px] font-bold text-slate-400 font-mono">{step.time}</p>
-                  <p className={`text-xs font-medium mt-1 ${idx === 0 ? "text-[#002045] font-bold" : "text-slate-650"}`}>
+                  <p className={`text-xs font-medium mt-1 ${idx === 0 ? "text-[#002045] font-bold" : "text-slate-600"}`}>
                     {step.text}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 text-slate-400 text-xs">
+            <div className="text-center py-16 text-slate-400 text-xs font-sans font-semibold">
               请点击左侧某一具体运单号核查其承运物理网流转链条。
             </div>
           )}
@@ -903,7 +903,7 @@ export function RolePermissionsView() {
 
   return (
     <div id="role-permissions-view" className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-sans">
         
         {/* Users list database table */}
         <div className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs md:col-span-2 space-y-4">
@@ -925,7 +925,7 @@ export function RolePermissionsView() {
                   <th className="p-3">状态</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 font-semibold text-slate-705">
                 {users.map((usr, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/50">
                     <td className="p-3 font-bold text-slate-800">{usr.name}</td>
@@ -958,7 +958,7 @@ export function RolePermissionsView() {
                 value={newUserName}
                 onChange={e => setNewUserName(e.target.value)}
                 placeholder="王小帅"
-                className="w-full bg-[#f8f9ff] text-xs font-bold p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#f8f9ff] text-xs font-bold p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500 font-semibold"
                 required
               />
             </div>
@@ -978,7 +978,7 @@ export function RolePermissionsView() {
               <select
                 value={newUserRole}
                 onChange={e => setNewUserRole(e.target.value)}
-                className="w-full bg-[#f8f9ff] text-xs font-bold p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#f8f9ff] text-xs font-bold p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:border-sky-500 font-semibold"
               >
                 <option value="主管运营经理">国家级运营经理/主管</option>
                 <option value="供应链采销">采销供应链高级专员</option>
@@ -987,7 +987,7 @@ export function RolePermissionsView() {
             </div>
             <button
               type="submit"
-              className="w-full bg-slate-900 text-white font-bold text-xs py-2.5 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs uppercase"
+              className="w-full bg-slate-900 text-white font-bold text-xs py-2.5 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs uppercase cursor-pointer"
             >
               一键添加白名单授权
             </button>

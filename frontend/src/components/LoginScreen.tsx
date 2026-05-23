@@ -4,8 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { Mail, Lock, LogIn, MessageSquare, ArrowRight, Check } from "lucide-react";
-import { motion } from "motion/react";
+import { Mail, Lock, LogIn, Check } from "lucide-react";
 
 interface LoginScreenProps {
   onLoginSuccess: (email: string) => void;
@@ -184,7 +183,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className={`w-full py-3.5 px-4 bg-[#006591] text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-[#004c6e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#006591] transition-all duration-150 flex items-center justify-center space-x-2 ${isLoggingIn ? "opacity-75 cursor-wait" : ""}`}
+              className={`w-full py-3.5 px-4 bg-[#006591] text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-[#004c6e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#006591] transition-all duration-150 flex items-center justify-center space-x-2 cursor-pointer ${isLoggingIn ? "opacity-75 cursor-wait" : ""}`}
             >
               {isLoggingIn ? (
                 <>
@@ -216,7 +215,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 setIsLoggingIn(true);
                 setTimeout(() => { setIsLoggingIn(false); onLoginSuccess("wechat@lenakids.com"); }, 900);
               }}
-              className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-[#0b1c30] hover:bg-slate-50 transition-colors duration-150"
+              className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-[#0b1c30] hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
             >
               <span className="text-emerald-500 text-sm">💬</span>
               <span>微信</span>
@@ -226,7 +225,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 setIsLoggingIn(true);
                 setTimeout(() => { setIsLoggingIn(false); onLoginSuccess("dingtalk@lenakids.com"); }, 900);
               }}
-              className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-[#0b1c30] hover:bg-slate-50 transition-colors duration-150"
+              className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-[#0b1c30] hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
             >
               <span className="text-sky-500 text-sm">🛩️</span>
               <span>钉钉</span>

@@ -6,7 +6,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import LoginScreen from "./components/LoginScreen";
-import DashboardScreen from "./components/DashboardScreen";
+import DashboardLayout from "./layouts/DashboardLayout";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -43,11 +43,10 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
           >
-            <DashboardScreen userEmail={userEmail} onLogout={handleLogout} />
+            <DashboardLayout userEmail={userEmail} onLogout={handleLogout} />
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 }
-

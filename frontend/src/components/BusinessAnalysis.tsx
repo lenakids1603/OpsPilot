@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, RefreshCcw, FileSpreadsheet, Sparkles, AlertCircle, Cpu } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { MetricCardData, BusinessChartPoint } from "../types";
+import { MetricCardData, BusinessChartPoint } from "@shared/types";
+import { analyzeDepartmentMetrics } from "../api/sales";
 
 // Mock dimensional database for different corporate departments
 const DEPARTMENT_DATASET: Record<string, {
@@ -88,7 +89,7 @@ export default function BusinessAnalysis({ initialDept = "All" }: { initialDept?
 
   const currentDataset = DEPARTMENT_DATASET[selectedDept] || DEPARTMENT_DATASET.All;
 
-  // AI Diagnostic triggered by modern system endpoint
+  // AI Diagnostic triggered by modern system endpoint via isolated API client
   const handleGenerateInsight = async () => {
     setLoadingInsight(true);
     setInsightError("");
@@ -102,27 +103,17 @@ export default function BusinessAnalysis({ initialDept = "All" }: { initialDept?
       .map((pt) => `- ${pt.label}: 发生金额 ¥${pt.revenue}, 成本支出 ¥${pt.cost}, 工效指数 ${pt.efficiency}%`)
       .join("\n");
 
-    const inputPayload = {
-      department: selectedDept === "All" ? "全集团所有部门联席" : `${selectedDept} 部门`,
-      metricsSummary: `主要核心KPI：\n${kpiSummary}\n\n五月度核心走势：\n${chartSummary}`
-    };
-
     try {
-      const response = await fetch("/api/gemini/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(inputPayload),
+      const result = await analyzeDepartmentMetrics({
+        department: selectedDept === "All" ? "全集团所有部门联席" : `${selectedDept} 部门`,
+        metricsSummary: `主要核心KPI：\n${kpiSummary}\n\n五月度核心走势：\n${chartSummary}`
       });
 
-      if (!response.ok) {
-        throw new Error("HTTP connection failed or server reported key absence in deployment.");
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "HTTP connection failed or server reported error in deployment.");
       }
 
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      setAiInsight(data.analysis || "无法获取诊断建议，请稍后再试。");
+      setAiInsight(result.data.analysis || "无法获取诊断建议，请稍后再试。");
     } catch (err: any) {
       console.error(err);
       setInsightError(err.message || "请求服务器接口失败。请确保您已在 Settings 菜单中配置了正确的 GEMINI_API_KEY。");
@@ -181,32 +172,32 @@ export default function BusinessAnalysis({ initialDept = "All" }: { initialDept?
   };
 
   return (
-    <div className="space-y-6">
+    <div id="business-analysis-container" className="space-y-6">
       {/* Filters and Actions Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4.5 bg-white border border-slate-200 rounded-xl">
         <div className="flex flex-wrap items-center gap-2.5">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1.5ID">部门过滤:</label>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1.5">部门过滤:</label>
           <button 
             onClick={() => { setSelectedDept("All"); setAiInsight(""); }}
-            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedDept === "All" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
+            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${selectedDept === "All" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
           >
             全部大盘
           </button>
           <button 
             onClick={() => { setSelectedDept("Sales"); setAiInsight(""); }}
-            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedDept === "Sales" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
+            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${selectedDept === "Sales" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
           >
             营销部门 📊
           </button>
           <button 
             onClick={() => { setSelectedDept("Logistics"); setAiInsight(""); }}
-            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedDept === "Logistics" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
+            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${selectedDept === "Logistics" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
           >
             仓储物流 📦
           </button>
           <button 
             onClick={() => { setSelectedDept("Support"); setAiInsight(""); }}
-            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedDept === "Support" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
+            className={`px-3 md:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${selectedDept === "Support" ? "bg-[#0ea5e9]/10 text-[#006591] border border-[#0ea5e9]/30" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"}`}
           >
             客户服务 💬
           </button>
@@ -227,7 +218,7 @@ export default function BusinessAnalysis({ initialDept = "All" }: { initialDept?
           {/* Export button */}
           <button
             onClick={handleExportCSV}
-            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-[#22c55e] text-white hover:bg-emerald-600 rounded-lg transition-all shadow-sm"
+            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-[#22c55e] text-white hover:bg-emerald-600 rounded-lg transition-all shadow-sm cursor-pointer"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>导出CSV对账表</span>
@@ -308,7 +299,7 @@ export default function BusinessAnalysis({ initialDept = "All" }: { initialDept?
                 return (
                   <g key={i}>
                     <line 
-                      x1={paddingLeft} 
+                       x1={paddingLeft} 
                       y1={y} 
                       x2={chartWidth - paddingRight} 
                       y2={y} 
@@ -467,7 +458,7 @@ export default function BusinessAnalysis({ initialDept = "All" }: { initialDept?
           <button
             onClick={handleGenerateInsight}
             disabled={loadingInsight}
-            className="w-full mt-4 py-2.5 px-4 bg-[#002045] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center justify-center space-x-2"
+            className="w-full mt-4 py-2.5 px-4 bg-[#002045] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center justify-center space-x-2 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#0ea5e9] fill-sky-300" />
             <span>{loadingInsight ? "计算评估报告中..." : `分析评估 ${selectedDept === "All" ? "全网大盘" : `${selectedDept}部门`}`}</span>

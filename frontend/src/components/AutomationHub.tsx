@@ -5,10 +5,10 @@
 
 import React, { useState } from "react";
 import { 
-  Play, CheckCircle2, ChevronRight, ToggleLeft, ToggleRight, Plus, Terminal, RefreshCw, Radio, Bell
+  Play, CheckCircle2, ToggleLeft, ToggleRight, Plus, Terminal, RefreshCw, Radio, Bell
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Workflow, WorkflowLog } from "../types";
+import { Workflow, WorkflowLog } from "@shared/types";
 
 // Initial set of system default rules
 const INITIAL_WORKFLOWS: Workflow[] = [
@@ -142,7 +142,7 @@ export default function AutomationHub() {
         id: "log-" + Date.now(),
         workflowId: wf.id,
         workflowName: wf.name,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         status: "success",
         details: `手动模拟运行成功：执行 ${wf.action}，更新数据对账，派发目标为：${wf.dispatchTarget || "日志中枢"}`
       };
@@ -191,10 +191,10 @@ export default function AutomationHub() {
                 exit={{ opacity: 0, height: 0 }}
                 className="bg-white p-5 border border-slate-200 rounded-xl overflow-hidden shadow-sm"
               >
-                <h5 className="text-xs font-bold text-[#002045] pb-2 border-b border-slate-100 mb-4">
+                <h5 className="text-xs font-bold text-[#002045] pb-2 border-b border-slate-100 mb-4 font-sans">
                   ➕ 建立新业务自动化规则
                 </h5>
-                <form onSubmit={handleAddNewWorkflow} className="space-y-4 text-xs font-medium">
+                <form onSubmit={handleAddNewWorkflow} className="space-y-4 text-xs font-medium font-sans">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-slate-500 font-semibold">自动化流名称</label>
@@ -203,7 +203,7 @@ export default function AutomationHub() {
                         required
                         value={newWfName}
                         onChange={(e) => setNewWfName(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white font-sans font-semibold"
                         placeholder="例：客服高级催付自动跟进"
                       />
                     </div>
@@ -212,7 +212,7 @@ export default function AutomationHub() {
                       <select
                         value={newWfTrigger}
                         onChange={(e) => setNewWfTrigger(e.target.value as Workflow["trigger"])}
-                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white font-sans font-semibold"
                       >
                         <option value="OrderCreated">新运单/订单建立时触发 (OrderCreated)</option>
                         <option value="InventoryAlert">商品库存跌破下限预警 (InventoryAlert)</option>
@@ -228,7 +228,7 @@ export default function AutomationHub() {
                       <select
                         value={newWfAction}
                         onChange={(e) => setNewWfAction(e.target.value as Workflow["action"])}
-                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white font-sans font-semibold"
                       >
                         <option value="FormatAndStore">本地解析排版 ➔ 对账录入库 (LocalFormat)</option>
                         <option value="GeminiAnalyze">激活 Gemini 提取 ➔ 对账录入库 (GeminiAnalyze)</option>
@@ -242,7 +242,7 @@ export default function AutomationHub() {
                         type="text"
                         value={newWfTarget}
                         onChange={(e) => setNewWfTarget(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
+                        className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white font-sans font-semibold"
                         placeholder="例：企业微信值班运营小组群"
                       />
                     </div>
@@ -254,7 +254,7 @@ export default function AutomationHub() {
                       value={newWfPrompt}
                       onChange={(e) => setNewWfPrompt(e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white resize-none"
+                      className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white resize-none font-sans font-semibold"
                       placeholder="例：将订单细节精简并翻译成英文后，作为微信提示推送给外籍主管..."
                     />
                   </div>
@@ -263,13 +263,13 @@ export default function AutomationHub() {
                     <button
                       type="button"
                       onClick={() => setShowAddForm(false)}
-                      className="px-3 py-1.5 text-[#43474e] hover:bg-slate-150 rounded"
+                      className="px-3 py-1.5 text-[#43474e] hover:bg-slate-150 rounded cursor-pointer"
                     >
                       取消
                     </button>
                     <button
                       type="submit"
-                      className="px-4.5 py-1.5 bg-[#006591] text-white font-bold rounded-lg shadow-xs hover:bg-[#004c6e] transition-all"
+                      className="px-4.5 py-1.5 bg-[#006591] text-white font-bold rounded-lg shadow-xs hover:bg-[#004c6e] transition-all cursor-pointer"
                     >
                       提交保存规则
                     </button>
@@ -315,7 +315,7 @@ export default function AutomationHub() {
                 <div className="flex items-center space-x-2.5 justify-end">
                   <button
                     onClick={() => handleToggleWorkflow(wf.id)}
-                    className="p-1 focus:outline-none"
+                    className="p-1 focus:outline-none cursor-pointer"
                     title={wf.isActive ? "点按停用规则" : "点按启动规则"}
                   >
                     {wf.isActive ? (
@@ -339,9 +339,8 @@ export default function AutomationHub() {
           </div>
         </div>
 
-        {/* Live Simulation Stepper & Dark Terminal logs (Right - 5 cols) */}
+        {/* Live Simulation Stepper & Dark Terminal logs */}
         <div className="lg:col-span-5 space-y-4">
-          {/* Workflow Stepper Canvas */}
           <div className="bg-white p-5 border border-slate-200 rounded-xl">
             <h5 className="text-xs font-bold text-[#002045] pb-3 border-b border-slate-100 flex items-center justify-between">
               <span>🖥️ 流程执行步骤仿真器</span>
@@ -427,7 +426,7 @@ export default function AutomationHub() {
             </div>
           </div>
 
-          {/* Console / Simulated Live Logging Output */}
+          {/* Console Output */}
           <div className="bg-slate-950 border border-slate-900 rounded-xl p-4 shadow-sm text-left">
             <div className="flex items-center space-x-2 text-teal-400 border-b border-white/10 pb-2 mb-3">
               <Terminal className="w-4 h-4" />
@@ -438,12 +437,12 @@ export default function AutomationHub() {
 
             <div className="min-h-[140px] max-h-[180px] overflow-y-auto space-y-1.5 font-mono text-[10px] text-emerald-400/90 leading-normal scrollbar-thin">
               {simStep === 0 ? (
-                <div className="text-slate-500 py-8 text-center italic">
+                <div className="text-slate-500 py-8 text-center italic font-sans font-semibold">
                   [系统日志闲置。请在左侧点击任一工作流的「执行测试」按钮以查看控制台实时仿真输出...]
                 </div>
               ) : (
                 simConsoleLines.map((line, ix) => (
-                  <div key={ix} className="whitespace-pre-wrap">{line}</div>
+                  <div key={ix} className="whitespace-pre-wrap font-mono font-semibold">{line}</div>
                 ))
               )}
             </div>
@@ -451,8 +450,8 @@ export default function AutomationHub() {
         </div>
       </div>
 
-      {/* Audit Logs table summary */}
-      <div className="bg-white p-5 border border-slate-200 rounded-xl">
+      {/* Audit Logs */}
+      <div className="bg-white p-5 border border-slate-200 rounded-xl font-sans">
         <h5 className="text-xs font-bold text-[#002045] pb-3 border-b border-slate-100 mb-4">
           📜 全局自动化测试/审计历史事件流
         </h5>
@@ -487,7 +486,7 @@ export default function AutomationHub() {
   );
 }
 
-// Simple Helper component to avoid unused import validation
+// Inline SVG helper
 function FileCheck2(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg

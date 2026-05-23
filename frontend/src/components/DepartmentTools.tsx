@@ -8,7 +8,8 @@ import {
   FileText, Regex, Sparkles, Send, Copy, Check, Trash2, HelpCircle, FileCheck2, CornerDownLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChatMessage } from "../types";
+import { ChatMessage } from "@shared/types";
+import { askOpsPilot } from "../api/dashboard";
 
 // Preset system prompting for business utility tasks
 const PRESETS = [
@@ -80,7 +81,7 @@ export default function DepartmentTools() {
     setTimeout(() => setLocalSuccessMessage(""), 3000);
   };
 
-  // Chat sending handler
+  // Chat sending handler using the isolated API client
   const handleSendMessage = async (customPrompt?: string, presetSystem?: string) => {
     const promptToSend = customPrompt || userInput;
     if (!promptToSend.trim()) return;
@@ -98,29 +99,20 @@ export default function DepartmentTools() {
     setIsSending(true);
 
     try {
-      const response = await fetch("/api/gemini/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: promptToSend,
-          systemInstruction: presetSystem || "You are an expert corporate secretary, data analyst, and automation consultant named OpsPilot."
-        }),
-      });
+      const result = await askOpsPilot(
+        promptToSend,
+        presetSystem || "You are an expert corporate secretary, data analyst, and automation consultant named OpsPilot."
+      );
 
-      if (!response.ok) {
-        throw new Error("HTTP failure to backend standardizer.");
-      }
-
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "HTTP failure to backend standardizer.");
       }
 
       // Add Model Response Bubble
       const botMsg: ChatMessage = {
         id: "bot-" + Date.now(),
         sender: "opspilot",
-        text: data.text || "已完成，没有输出内容。",
+        text: result.data.text || "已完成，没有输出内容。",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setChatLog((prev) => [...prev, botMsg]);
@@ -150,12 +142,12 @@ export default function DepartmentTools() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-sans">
       {/* Messy Order Text Formatter (Left Column - 5 cols) */}
-      <div className="lg:col-span-5 space-y-6">
-        <div className="bg-white p-5 border border-slate-200 rounded-xl relative">
+      <div className="lg:col-span-12 xl:col-span-5 space-y-6">
+        <div className="bg-white p-5 border border-slate-200 rounded-xl relative shadow-2xs">
           <div className="flex items-center space-x-2 pb-3.5 border-b border-slate-100 mb-4">
-            <Regex className="w-5 h-5 text-[#006591]" />
+            <Regex className="w-5 h-5 text-[#0ea5e9]" />
             <h4 className="text-sm font-bold text-[#002045]">
               日常单本/客单智能拆分提取器
             </h4>
@@ -168,21 +160,21 @@ export default function DepartmentTools() {
             value={messyText}
             onChange={(e) => setMessyText(e.target.value)}
             rows={5}
-            className="w-full p-3 font-medium text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white resize-y leading-relaxed mb-4"
+            className="w-full p-3 font-semibold text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white resize-y leading-relaxed mb-4 font-sans"
             placeholder="粘贴凌乱的业务单据例如：北京市朝阳区客户张三电话139...商品名称..."
           />
 
           <div className="flex justify-between items-center mb-6">
             <button
               onClick={() => setMessyText("")}
-              className="flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold text-rose-500 hover:bg-rose-50 border border-transparent rounded-lg transition-all"
+              className="flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold text-rose-500 hover:bg-rose-50 border border-transparent rounded-lg transition-all cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>清空输入</span>
             </button>
             <button
               onClick={handleLocalExtraction}
-              className="flex items-center space-x-1.5 px-4.5 py-1.5 bg-[#006591] hover:bg-[#004c6e] text-white text-xs font-bold rounded-lg shadow-sm transition-all"
+              className="flex items-center space-x-1.5 px-4.5 py-1.5 bg-[#006591] hover:bg-[#004c6e] text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
             >
               <FileCheck2 className="w-3.5 h-3.5" />
               <span>一键正则拆分规则</span>
@@ -208,7 +200,7 @@ export default function DepartmentTools() {
                 {extractedName && (
                   <button 
                     onClick={() => handleCopy("name", extractedName)}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
                     title="复制姓名"
                   >
                     {copiedId === "name" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
@@ -227,7 +219,7 @@ export default function DepartmentTools() {
                 {extractedPhone && (
                   <button 
                     onClick={() => handleCopy("phone", extractedPhone)}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
                     title="复制手机"
                   >
                     {copiedId === "phone" ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
@@ -239,11 +231,11 @@ export default function DepartmentTools() {
             {/* Field: Address */}
             <div className="flex flex-col space-y-1">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-500">详细收折叠地址:</span>
+                <span className="font-semibold text-slate-500">详细收发地址:</span>
                 {extractedAddress && (
                   <button 
                     onClick={() => handleCopy("addr", extractedAddress)}
-                    className="p-1 text-slate-400 hover:text-[#006591] rounded flex items-center space-x-1"
+                    className="p-1 text-slate-400 hover:text-[#006591] rounded flex items-center space-x-1 cursor-pointer"
                     title="复制地址"
                   >
                     {copiedId === "addr" ? (
@@ -290,7 +282,7 @@ export default function DepartmentTools() {
       </div>
 
       {/* Gemini AI Copywriter Chat (Right Column - 7 cols) */}
-      <div className="lg:col-span-7 flex flex-col space-y-4">
+      <div className="lg:col-span-12 xl:col-span-7 flex flex-col space-y-4">
         {/* Presets Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {PRESETS.map((preset, idx) => (
@@ -298,7 +290,7 @@ export default function DepartmentTools() {
               key={idx}
               onClick={() => handleApplyPreset(preset)}
               disabled={isSending}
-              className="bg-white hover:bg-slate-50 active:bg-slate-100 disabled:opacity-55 p-3 border border-slate-200 rounded-xl transition-all text-left flex items-start space-x-2.5 shadow-sm group cursor-pointer"
+              className="bg-white hover:bg-slate-50 active:bg-slate-100 disabled:opacity-55 p-3 border border-slate-200 rounded-xl transition-all text-left flex items-start space-x-2.5 shadow-2xs group cursor-pointer"
             >
               <span className="text-xl p-1 bg-slate-50 rounded-lg group-hover:scale-115 transition-transform">{preset.emoji}</span>
               <div>
@@ -314,7 +306,7 @@ export default function DepartmentTools() {
         </div>
 
         {/* Interactive Chat Console */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-[400px]">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-2xs flex flex-col h-[400px]">
           {/* Console Header */}
           <div className="p-3.5 px-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-xl">
             <div className="flex items-center space-x-2">
@@ -342,7 +334,7 @@ export default function DepartmentTools() {
                       : "bg-slate-50 text-slate-700 rounded-bl-none border border-slate-200/80"
                   }`}
                 >
-                  <div className="whitespace-pre-line prose prose-invert font-medium">
+                  <div className="whitespace-pre-line prose prose-invert font-semibold">
                     {msg.text}
                   </div>
                   {/* Option to copy robot output */}
@@ -350,7 +342,7 @@ export default function DepartmentTools() {
                     <div className="flex justify-end border-t border-slate-150 mt-2.5 pt-1.5">
                       <button
                         onClick={() => handleCopy(msg.id, msg.text)}
-                        className="flex items-center space-x-1 text-[10px] text-slate-400 hover:text-[#006591]"
+                        className="flex items-center space-x-1 text-[10px] text-slate-400 hover:text-[#006591] cursor-pointer"
                       >
                         {copiedId === msg.id ? (
                           <>
@@ -401,7 +393,7 @@ export default function DepartmentTools() {
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 disabled={isSending}
-                className="flex-grow bg-white border border-slate-200/90 rounded-lg px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] disabled:opacity-60 font-medium"
+                className="flex-grow bg-white border border-slate-200/90 rounded-lg px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591] disabled:opacity-60 font-semibold"
                 placeholder={isSending ? "智能助理计算中..." : "在这里打字聊天或向 Gemini 询问..."}
               />
               <button
