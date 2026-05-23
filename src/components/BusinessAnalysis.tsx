@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, RefreshCcw, FileSpreadsheet, Sparkles, AlertCircle, Cpu } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MetricCardData, BusinessChartPoint } from "../types";
@@ -75,12 +75,16 @@ const DEPARTMENT_DATASET: Record<string, {
   }
 };
 
-export default function BusinessAnalysis() {
-  const [selectedDept, setSelectedDept] = useState<string>("All");
+export default function BusinessAnalysis({ initialDept = "All" }: { initialDept?: string }) {
+  const [selectedDept, setSelectedDept] = useState<string>(initialDept);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("Q2_YTD");
   const [aiInsight, setAiInsight] = useState<string>("");
   const [loadingInsight, setLoadingInsight] = useState<boolean>(false);
   const [insightError, setInsightError] = useState<string>("");
+
+  useEffect(() => {
+    setSelectedDept(initialDept);
+  }, [initialDept]);
 
   const currentDataset = DEPARTMENT_DATASET[selectedDept] || DEPARTMENT_DATASET.All;
 
