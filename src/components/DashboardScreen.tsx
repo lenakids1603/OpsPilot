@@ -7,7 +7,7 @@ import React, { useState, useEffect } from "react";
 import { 
   LogOut, ShieldCheck, HelpCircle, User,
   LayoutDashboard, TrendingUp, Boxes, Palette, ShoppingCart, Truck, Headphones, Percent, Database, Settings,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, Menu, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import BusinessAnalysis from "./BusinessAnalysis";
@@ -85,6 +85,10 @@ export default function DashboardScreen({ userEmail, onLogout }: DashboardScreen
   const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({
     "工作台": true
   });
+  
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const toggleMenu = () => setIsMenuOpen(prev => !prev);
+  const closeMenu = () => setIsMenuOpen(false);
 
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
@@ -214,10 +218,148 @@ export default function DashboardScreen({ userEmail, onLogout }: DashboardScreen
   return (
     <div id="dashboard-layout" className="min-h-screen bg-[#f8f9ff] flex flex-col md:flex-row text-[#0b1c30] font-sans antialiased overflow-hidden select-none">
       
-      {/* Sidebar Navigation (Left Rail) with custom layout */}
+      {/* Mobile Drawer Navigation (Slide-out menu like 2026krabi.lenakids.com) */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeMenu}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+            />
+            
+            {/* Sliding Mobile Menu Drawer */}
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-[280px] bg-[#002045] text-white z-[70] shadow-2xl flex flex-col pt-5"
+            >
+              {/* Close Button X */}
+              <div className="absolute top-4 right-4">
+                <button 
+                  onClick={closeMenu} 
+                  className="p-1.5 hover:bg-white/10 rounded-full text-slate-300 hover:text-white transition-colors"
+                  title="关闭菜单"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Brand Header */}
+              <div className="px-5 mb-5 mt-2">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center font-bold text-[#002045] shadow-xs">
+                    <span className="font-serif text-lg tracking-tight">LN</span>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold tracking-tight text-white leading-none">Lenakids</h2>
+                    <span className="text-[10px] font-bold text-sky-400 tracking-wider">OpsPilot ERP</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable multi-level Accordion list inside drawer */}
+              <div className="flex-grow overflow-y-auto px-3 py-2 space-y-1">
+                {MENU_ITEMS.map((parent) => {
+                  const isExpanded = !!expandedParents[parent.title];
+                  const isActiveParent = selectedParent === parent.title;
+
+                  return (
+                    <div key={parent.title} className="space-y-0.5">
+                      {/* First-level accordion head */}
+                      <button
+                        onClick={() => handleToggleParent(parent.title)}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.8 rounded-lg text-xs font-bold transition-all ${
+                          isActiveParent 
+                            ? "bg-white/10 text-white font-extrabold" 
+                            : "text-[#86a0cd] hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2.5">
+                          {parent.icon}
+                          <span>{parent.title}</span>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                        )}
+                      </button>
+
+                      {/* Submenu lists with exit state */}
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="overflow-hidden pl-7.5 space-y-0.5"
+                          >
+                            {parent.submenus.map((sub) => {
+                              const isSelected = selectedParent === parent.title && selectedSub === sub;
+                              return (
+                                <button
+                                  key={sub}
+                                  onClick={() => {
+                                    handleSelectSubmenu(parent.title, sub);
+                                    closeMenu(); // Auto close menu drawer
+                                  }}
+                                  className={`w-full text-left px-3.5 py-1.8 rounded-md text-[11px] font-bold transition-all leading-normal ${
+                                    isSelected
+                                      ? "text-white bg-sky-500 font-extrabold shadow-sm"
+                                      : "text-slate-400 hover:text-white hover:bg-white/5 font-medium"
+                                  }`}
+                                >
+                                  {sub}
+                                </button>
+                              );
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Sidebar Footer detailing Operator details */}
+              <div className="p-4 border-t border-white/5 bg-black/15 text-xs flex-shrink-0">
+                <div className="flex items-center space-x-2.5 text-slate-300">
+                  <div className="w-7 h-7 rounded-full bg-sky-500/20 flex items-center justify-center border border-sky-400/30 text-sky-300">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div className="truncate min-w-0 flex-grow">
+                    <p className="font-bold text-white text-[11px] truncate">{userEmail}</p>
+                    <span className="text-[9px] font-medium text-sky-400 block font-mono">授权值班工号 #LN9812</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    closeMenu();
+                    onLogout();
+                  }}
+                  className="w-full mt-4 flex items-center justify-center space-x-2 py-1.8 border border-white/10 hover:bg-white/5 rounded-lg text-xs font-bold text-[#86a0cd] hover:text-white transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>注销退出账户</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar Navigation - Desktop Left Rail (Hidden on Mobile) */}
       <aside 
         id="dashboard-sidebar" 
-        className="w-full md:w-68 bg-[#002045] text-white flex flex-col justify-between border-r border-[#1a365d] shadow-sm flex-shrink-0 h-screen overflow-hidden"
+        className="hidden md:flex md:w-68 bg-[#002045] text-white flex-col justify-between border-r border-[#1a365d] shadow-sm flex-shrink-0 h-screen overflow-hidden"
       >
         {/* Brand Header */}
         <div className="p-5 flex-shrink-0 border-b border-white/5 bg-black/10">
@@ -319,9 +461,31 @@ export default function DashboardScreen({ userEmail, onLogout }: DashboardScreen
       {/* Main Panel Frame (Right fluid zone) */}
       <main id="dashboard-content" className="flex-grow flex flex-col min-w-0 h-screen overflow-hidden">
         
-        {/* Top Header details */}
-        <header className="bg-white border-b border-slate-250 h-16 px-6 flex items-center justify-between shadow-xs select-none flex-shrink-0">
-          <div className="flex items-center space-x-2 text-xs font-bold text-slate-400">
+        {/* Responsive Header (Top bar) */}
+        <header className="bg-white border-b border-slate-250 h-16 px-4 md:px-6 flex items-center justify-between shadow-xs select-none flex-shrink-0">
+          
+          {/* Mobile hamburger button + logo (Visible only on mobile) */}
+          <div className="flex items-center space-x-2 md:hidden">
+            <button 
+              onClick={toggleMenu}
+              className="p-1.5 hover:bg-slate-50 text-[#002045] rounded-full transition-colors flex-shrink-0"
+              title="打开菜单"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <div className="flex items-center space-x-1.5 flex-shrink-0">
+              <div className="w-6.5 h-6.5 bg-[#002045] rounded-md flex items-center justify-center font-bold text-white text-[10px]">
+                <span className="font-serif">LN</span>
+              </div>
+              <div className="leading-none">
+                <h1 className="text-xs font-black text-[#002045] tracking-tight leading-none mb-0.5">Lenakids</h1>
+                <span className="text-[8px] font-bold text-sky-500 font-mono tracking-wide leading-none">OpsPilot</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop header information (Visible only on desktop) */}
+          <div className="hidden md:flex items-center space-x-2 text-xs font-bold text-slate-400">
             <ShieldCheck className="w-4.5 h-4.5 text-emerald-500" />
             <span className="text-[#002045] font-black">Lenakids SECURED ENVE_ZONE</span>
             <span className="text-slate-200">|</span>
@@ -332,8 +496,15 @@ export default function DashboardScreen({ userEmail, onLogout }: DashboardScreen
             </span>
           </div>
 
-          <div className="flex items-center space-x-4.5">
-            {/* Realtime UTC Date Clock */}
+          {/* Mobile Current Path Indicator (Visible only on mobile) */}
+          <div className="md:hidden flex-grow px-2 truncate text-right">
+            <span className="inline-block text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full font-bold leading-normal text-[10px] truncate max-w-[140px]">
+              {selectedParent} › {selectedSub}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2 md:space-x-4.5">
+            {/* Realtime UTC Date Clock (Desktop Only) */}
             <div className="text-right hidden md:block">
               <span className="text-[10px] font-bold text-slate-400 block font-mono">
                 {currentDate}
@@ -347,7 +518,7 @@ export default function DashboardScreen({ userEmail, onLogout }: DashboardScreen
 
             {/* Quick action: help */}
             <button 
-              onClick={() => alert("Lenakids OpsPilot 行政总控：如有任何接口或功能疑问，可直接进入 [部门辅助工具] 模块向内置的 Gemini 3.5 AI 业务诊断助理提问解答。")}
+              onClick={() => alert("Lenakids OpsPilot 行政总控：如有任何接口或功能疑问，可直接进入 [部门辅助工具] 模块向内置 of Gemini 3.5 AI 业务诊断助理提问解答。")}
               className="p-1.5 hover:bg-slate-50 text-slate-400 hover:text-[#002045] rounded-lg transition-colors"
               title="求助中心"
             >
@@ -357,7 +528,7 @@ export default function DashboardScreen({ userEmail, onLogout }: DashboardScreen
         </header>
 
         {/* Dynamic Tab Body rendering space inside standard viewport limits */}
-        <div className="flex-grow p-6 overflow-y-auto bg-[#f8f9ff]">
+        <div className="flex-grow p-4 md:p-6 overflow-y-auto bg-[#f8f9ff]">
           <AnimatePresence mode="wait">
             <motion.div
               key={`${selectedParent}-${selectedSub}`}
@@ -373,16 +544,17 @@ export default function DashboardScreen({ userEmail, onLogout }: DashboardScreen
         </div>
 
         {/* Mini Status Grid footer */}
-        <footer className="h-9 px-6 bg-white border-t border-slate-200/80 flex items-center justify-between text-[10px] text-slate-400 font-medium font-mono flex-shrink-0">
-          <div className="flex items-center space-x-3.5">
-            <span>● PROD_INGRESS: RUNNING</span>
-            <span>|</span>
-            <span>SYSTEM_TIME: 2026-05-22</span>
-            <span>|</span>
-            <span>CADDY: HTTPS PROXY</span>
+        <footer className="h-9 px-4 md:px-6 bg-white border-t border-slate-200/80 flex items-center justify-between text-[9px] md:text-[10px] text-slate-400 font-medium font-mono flex-shrink-0">
+          <div className="flex items-center space-x-2 md:space-x-3.5 overflow-hidden">
+            <span className="truncate">● PROD_INGRESS: RUNNING</span>
+            <span className="hidden leading-none md:inline">|</span>
+            <span className="hidden md:inline">SYSTEM_TIME: 2026-05-22</span>
+            <span className="hidden leading-none md:inline">|</span>
+            <span className="hidden md:inline">CADDY: HTTPS PROXY</span>
           </div>
-          <div>
-            <span>Lenakids OpsPilot Enterprise Portal v2.5.0</span>
+          <div className="flex-shrink-0">
+            <span className="hidden xs:inline">Lenakids OpsPilot Enterprise Portal v2.5.0</span>
+            <span className="xs:hidden">v2.5.0</span>
           </div>
         </footer>
       </main>
