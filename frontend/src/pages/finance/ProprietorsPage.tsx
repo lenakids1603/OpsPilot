@@ -21,6 +21,7 @@ interface Proprietor {
   monthIncome: number;
   monthExpense: number;
   status: "正常" | "本月使用中" | "暂停使用" | "接近额度" | "已达额度";
+  platformServiceFee?: number;
 }
 
 interface BankAccount {
@@ -42,15 +43,15 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
   const [activeTab, setActiveTab] = useState<"proprietors" | "accounts" | "alerts">(defaultTab || initialTab);
   const [search, setSearch] = useState("");
   const [proprietorList, setProprietorList] = useState<Proprietor[]>([
-    { id: "P-01", name: "义乌市乐娜商贸部", legal: "陈*娜", boundShop: "抖音-莉娜童装旗舰店", bankAccountCount: 2, annualTotal: 4894300, annualLimit: 5000000, monthIncome: 412000, monthExpense: 220000, status: "接近额度" },
-    { id: "P-02", name: "温岭市依依童装店", legal: "沈*英", boundShop: "抖音-旗舰精选", bankAccountCount: 1, annualTotal: 5092000, annualLimit: 5000000, monthIncome: 12050, monthExpense: 5000, status: "已达额度" },
-    { id: "P-03", name: "杭州仓前顺福童装网店", legal: "郑*华", boundShop: "抖音-莉娜臻选", bankAccountCount: 2, annualTotal: 4520300, annualLimit: 5000000, monthIncome: 389000, monthExpense: 180000, status: "接近额度" },
-    { id: "P-04", name: "织里佳琪制衣厂", legal: "朱*荣", boundShop: "淘天-LenaKids直营店", bankAccountCount: 3, annualTotal: 3120000, annualLimit: 5000000, monthIncome: 345000, monthExpense: 280000, status: "本月使用中" },
-    { id: "P-05", name: "临海市琪琪服饰部", legal: "李*华", boundShop: "抖音-爆款特卖", bankAccountCount: 2, annualTotal: 2190000, annualLimit: 5000000, monthIncome: 420000, monthExpense: 330000, status: "本月使用中" },
-    { id: "P-06", name: "常熟中豪电商商行", legal: "顾*明", boundShop: "快手-Lena特卖场", bankAccountCount: 1, annualTotal: 890000, annualLimit: 5000000, monthIncome: 154000, monthExpense: 110000, status: "正常" },
-    { id: "P-07", name: "温州卡服商贸有限公司", legal: "林*海", boundShop: "拼多多-特惠组", bankAccountCount: 1, annualTotal: 48000, annualLimit: 5000000, monthIncome: 0, monthExpense: 0, status: "暂停使用" },
-    { id: "P-08", name: "湖州吴兴达美服饰部", legal: "胡*伟", boundShop: "抖音-琪琪美衣", bankAccountCount: 2, annualTotal: 3820000, annualLimit: 5000000, monthIncome: 290000, monthExpense: 190000, status: "本月使用中" },
-    { id: "P-09", name: "海宁市贝贝童装大卖部", legal: "徐*国", boundShop: "淘宝-莱那生活馆", bankAccountCount: 1, annualTotal: 1200000, annualLimit: 5000000, monthIncome: 80000, monthExpense: 62000, status: "正常" },
+    { id: "P-01", name: "义乌市乐娜商贸部", legal: "陈*娜", boundShop: "抖音-莉娜童装旗舰店", bankAccountCount: 2, annualTotal: 4894300, annualLimit: 5000000, monthIncome: 412000, monthExpense: 220000, status: "接近额度", platformServiceFee: 146829 },
+    { id: "P-02", name: "温岭市依依童装店", legal: "沈*英", boundShop: "抖音-旗舰精选", bankAccountCount: 1, annualTotal: 5092000, annualLimit: 5000000, monthIncome: 12050, monthExpense: 5000, status: "已达额度", platformServiceFee: 152760 },
+    { id: "P-03", name: "杭州仓前顺福童装网店", legal: "郑*华", boundShop: "抖音-莉娜臻选", bankAccountCount: 2, annualTotal: 4520300, annualLimit: 5000000, monthIncome: 389000, monthExpense: 180000, status: "接近额度", platformServiceFee: 135609 },
+    { id: "P-04", name: "织里佳琪制衣厂", legal: "朱*荣", boundShop: "淘天-LenaKids直营店", bankAccountCount: 3, annualTotal: 3120000, annualLimit: 5000000, monthIncome: 345000, monthExpense: 280000, status: "本月使用中", platformServiceFee: 93600 },
+    { id: "P-05", name: "临海市琪琪服饰部", legal: "李*华", boundShop: "抖音-爆款特卖", bankAccountCount: 2, annualTotal: 2190000, annualLimit: 5000000, monthIncome: 420000, monthExpense: 330000, status: "本月使用中", platformServiceFee: 65700 },
+    { id: "P-06", name: "常熟中豪电商商行", legal: "顾*明", boundShop: "快手-Lena特卖场", bankAccountCount: 1, annualTotal: 890000, annualLimit: 5000000, monthIncome: 154000, monthExpense: 110000, status: "正常", platformServiceFee: 26700 },
+    { id: "P-07", name: "温州卡服商贸有限公司", legal: "林*海", boundShop: "拼多多-特惠组", bankAccountCount: 1, annualTotal: 48000, annualLimit: 5000000, monthIncome: 0, monthExpense: 0, status: "暂停使用", platformServiceFee: 1440 },
+    { id: "P-08", name: "湖州吴兴达美服饰部", legal: "胡*伟", boundShop: "抖音-琪琪美衣", bankAccountCount: 2, annualTotal: 3820000, annualLimit: 5000000, monthIncome: 290000, monthExpense: 190000, status: "本月使用中", platformServiceFee: 114600 },
+    { id: "P-09", name: "海宁市贝贝童装大卖部", legal: "徐*国", boundShop: "淘宝-莱那生活馆", bankAccountCount: 1, annualTotal: 1200000, annualLimit: 5000000, monthIncome: 80000, monthExpense: 62000, status: "正常", platformServiceFee: 36000 },
   ]);
 
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([
@@ -71,6 +72,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
   const [formShop, setFormShop] = useState("");
   const [formAnnualTotal, setFormAnnualTotal] = useState(0);
   const [formStatus, setFormStatus] = useState<any>("正常");
+  const [formPlatformServiceFee, setFormPlatformServiceFee] = useState(0);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -82,6 +84,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
     setFormLegal("");
     setFormShop("");
     setFormAnnualTotal(0);
+    setFormPlatformServiceFee(0);
     setFormStatus("正常");
     setIsDrawerOpen(true);
   };
@@ -92,6 +95,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
     setFormLegal(prop.legal);
     setFormShop(prop.boundShop);
     setFormAnnualTotal(prop.annualTotal);
+    setFormPlatformServiceFee(prop.platformServiceFee ?? Math.round(prop.annualTotal * 0.03));
     setFormStatus(prop.status);
     setIsDrawerOpen(true);
   };
@@ -116,6 +120,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
             legal: formLegal,
             boundShop: formShop,
             annualTotal: Number(formAnnualTotal),
+            platformServiceFee: Number(formPlatformServiceFee),
             status: calculatedStatus
           };
         }
@@ -133,6 +138,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
         annualLimit: 5000000,
         monthIncome: 0,
         monthExpense: 0,
+        platformServiceFee: Number(formPlatformServiceFee),
         status: formStatus
       };
       setProprietorList(prev => [newProp, ...prev]);
@@ -238,6 +244,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
                 <th className="p-4">绑定平台/店铺</th>
                 <th className="p-4 text-center">账户卡数</th>
                 <th className="p-4">本月回执流水 (收/支)</th>
+                <th className="p-4">平台服务费</th>
                 <th className="p-4">年度过账累计</th>
                 <th className="p-4 text-center">已用比例</th>
                 <th className="p-4">当前状态</th>
@@ -248,6 +255,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
               {filteredProprietors.map(p => {
                 const ratio = Math.round((p.annualTotal / p.annualLimit) * 100);
                 const theme = getQuotaStatusTheme(ratio);
+                const serviceFee = p.platformServiceFee ?? Math.round(p.annualTotal * 0.03);
                 return (
                   <tr key={p.id} className="hover:bg-slate-50/20">
                     <td className="p-4">
@@ -264,6 +272,9 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
                         <span className="text-emerald-500 font-black">收: +¥{p.monthIncome.toLocaleString()}</span>
                         <span className="text-rose-400 font-semibold">支: -¥{p.monthExpense.toLocaleString()}</span>
                       </div>
+                    </td>
+                    <td className="p-4 font-mono font-black text-[#006591]">
+                      ¥{serviceFee.toLocaleString()}
                     </td>
                     <td className="p-4 font-mono font-black text-slate-800">¥{p.annualTotal.toLocaleString()}</td>
                     <td className="p-4">
@@ -457,7 +468,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
 
               <form onSubmit={handleSaveProprietor} className="flex-grow overflow-y-auto p-5 space-y-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-450 mb-1.5 uppercase">个体工商户名称 <span className="text-rose-500">*</span></label>
+                  <label className="block text-[11px] font-bold text-slate-455 mb-1.5 uppercase font-sans">个体工商户名称 <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     required
@@ -487,7 +498,7 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
                       value={formShop}
                       onChange={(e) => setFormShop(e.target.value)}
                       placeholder="抖音-依依特卖铺"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-xs font-semibold text-slate-805 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
                     />
                   </div>
                 </div>
@@ -499,13 +510,32 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
                     <input
                       type="number"
                       required
-                      value={formAnnualTotal}
-                      onChange={(e) => setFormAnnualTotal(Number(e.target.value))}
+                      value={formAnnualTotal === 0 ? "" : formAnnualTotal}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFormAnnualTotal(val);
+                        setFormPlatformServiceFee(Math.round(val * 0.03));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-7 pr-3 text-xs font-black font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
                       placeholder="0.00"
                     />
                   </div>
                   <span className="text-[9.5px] text-slate-400 mt-1 block">系统将自动以五百万限额进行百分比计算，并分流预警级别。</span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-455 mb-1.5 uppercase font-sans">平台服务费余额扣除 (元)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">¥</span>
+                    <input
+                      type="number"
+                      value={formPlatformServiceFee === 0 ? "" : formPlatformServiceFee}
+                      onChange={(e) => setFormPlatformServiceFee(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-7 pr-3 text-xs font-black font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#006591] focus:bg-white"
+                      placeholder="已累计过账平台费（3%预估或实扣）"
+                    />
+                  </div>
+                  <span className="text-[9.5px] text-slate-400 mt-1 block">默认根据累积过账流水的 3.0% 扣点比率进行预估。</span>
                 </div>
 
                 <div>
@@ -541,7 +571,6 @@ export default function ProprietorsPage({ initialTab = "proprietors", defaultTab
           </>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

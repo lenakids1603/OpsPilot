@@ -23,7 +23,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     title: "财务系统",
     icon: <Wallet className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["财务总览", "公司资金流水", "个体户主体管理", "银行账户管理", "额度预警"]
+    submenus: ["财务总览", "公司资金流水", "个体户与银行账户", "额度预警"]
   },
   {
     title: "供应商系统",

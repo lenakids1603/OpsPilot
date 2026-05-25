@@ -46,8 +46,7 @@ export function renderRegisteredView(selectedParent: string, selectedSub: string
   if (selectedParent === "财务系统") {
     if (selectedSub === "财务总览") return <FinanceOverviewPage />;
     if (selectedSub === "公司资金流水") return <CashflowPage />;
-    if (selectedSub === "个体户主体管理") return <ProprietorsPage defaultTab="proprietors" />;
-    if (selectedSub === "银行账户管理") return <ProprietorsPage defaultTab="accounts" />;
+    if (selectedSub === "个体户与银行账户") return <ProprietorsPage defaultTab="proprietors" />;
     if (selectedSub === "额度预警") return <ProprietorsPage defaultTab="alerts" />;
   }
 
