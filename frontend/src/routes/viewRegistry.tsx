@@ -13,6 +13,7 @@ import ProductListPage from "../pages/products/ProductListPage";
 import FinanceOverviewPage from "../pages/finance/FinanceOverviewPage";
 import CashflowPage from "../pages/finance/CashflowPage";
 import ProprietorsPage from "../pages/finance/ProprietorsPage";
+import IndividualInvoicePage from "../pages/finance/IndividualInvoicePage";
 import SupplierOverviewPage from "../pages/suppliers/SupplierOverviewPage";
 import SupplierProfilesPage from "../pages/suppliers/SupplierProfilesPage";
 import SupplierBillAuditPage from "../pages/suppliers/SupplierBillAuditPage";
@@ -46,7 +47,9 @@ export function renderRegisteredView(selectedParent: string, selectedSub: string
   if (selectedParent === "财务系统") {
     if (selectedSub === "财务总览") return <FinanceOverviewPage />;
     if (selectedSub === "公司资金流水") return <CashflowPage />;
-    if (selectedSub === "个体户与银行账户") return <ProprietorsPage defaultTab="proprietors" />;
+    if (selectedSub === "供应商账单核对") return <SupplierBillAuditPage defaultTab="audit" />;
+    if (selectedSub === "个体户与银行账户" || selectedSub === "个体户账户管理") return <ProprietorsPage defaultTab="proprietors" />;
+    if (selectedSub === "个体户票务管理" || selectedSub === "票务管理") return <IndividualInvoicePage />;
     if (selectedSub === "额度预警") return <ProprietorsPage defaultTab="alerts" />;
   }
 
@@ -54,9 +57,6 @@ export function renderRegisteredView(selectedParent: string, selectedSub: string
   if (selectedParent === "供应商系统") {
     if (selectedSub === "供应商总览") return <SupplierOverviewPage />;
     if (selectedSub === "供应商档案") return <SupplierProfilesPage />;
-    if (selectedSub === "供应商账单核对") return <SupplierBillAuditPage defaultTab="audit" />;
-    if (selectedSub === "付款登记") return <SupplierBillAuditPage defaultTab="payments" />;
-    if (selectedSub === "开票登记") return <SupplierBillAuditPage defaultTab="invoices" />;
     if (selectedSub === "采购超时预警") return <SupplierOverviewPage defaultTab="alerts" />;
   }
 

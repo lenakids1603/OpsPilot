@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Plus, Upload, Scale, BookOpen, Download, AlertTriangle, RefreshCw, BarChart2, CheckCircle2,
   TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, AlertCircle, HelpCircle,
@@ -11,6 +11,7 @@ import {
   Clock, Settings
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import OverviewKPIsDetailDrawer from "./components/OverviewKPIsDetailDrawer";
 
 interface Proprietor {
   name: string;
@@ -42,6 +43,37 @@ export default function FinanceOverviewPage() {
   const [timeRange, setTimeRange] = useState<"day" | "yesterday" | "month" | "lastMonth" | "custom">("month");
   const [selectedPlatform, setSelectedPlatform] = useState("all");
   const [selectedShop, setSelectedShop] = useState("all");
+
+  // Drill-down Detail Drawer type
+  const [activeDetailType, setActiveDetailType] = useState<"invoice_available" | "invoice_completed" | "payment_paid" | null>(null);
+
+  // Monitor URL parameters for direct deep-linking
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const detail = params.get("detail");
+    if (detail === "invoice_available") {
+      setActiveDetailType("invoice_available");
+    } else if (detail === "invoice_completed" || detail === "invoiced") {
+      setActiveDetailType("invoice_completed");
+    } else if (detail === "payment_paid" || detail === "paid") {
+      setActiveDetailType("payment_paid");
+    }
+  }, []);
+
+  const openDetailDrawer = (type: "invoice_available" | "invoice_completed" | "payment_paid") => {
+    setActiveDetailType(type);
+    const params = new URLSearchParams(window.location.search);
+    params.set("detail", type);
+    window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}`);
+  };
+
+  const closeDetailDrawer = () => {
+    setActiveDetailType(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("detail");
+    const newSearch = params.toString();
+    window.history.pushState(null, "", `${window.location.pathname}${newSearch ? `?${newSearch}` : ""}`);
+  };
 
   // Interaction Modals/Drawers
   const [isNewExpenseOpen, setIsNewExpenseOpen] = useState(false);
@@ -266,6 +298,28 @@ export default function FinanceOverviewPage() {
     });
     window.dispatchEvent(event);
     showToast(`正在深度联动，极速穿透查看${direction === "income" ? "收入" : "支出"}对账明细...`);
+  };
+
+  // Custom Navigation Click Handler for KPI cards linking to Individual Invoice Page "票务管理"
+  const handleIndividualInvoiceNavigate = (targetTab: "available" | "issued" | "paid") => {
+    const event = new CustomEvent("finance-navigate", {
+      detail: {
+        parent: "财务系统",
+        sub: "票务管理",
+        targetTab
+      }
+    });
+    window.dispatchEvent(event);
+
+    localStorage.setItem("finance-link-params", JSON.stringify({
+      parent: "财务系统",
+      sub: "票务管理",
+      targetTab,
+      tab: targetTab,
+      triggeredAt: Date.now()
+    }));
+
+    showToast(`正在深度联动，极速下钻至个体户票务中查看相应对账主体明细...`);
   };
 
   // Add Expense form handler
@@ -613,64 +667,91 @@ export default function FinanceOverviewPage() {
       {/* 3 Secondary KPI Cards (可开票金额, 已开票金额, 已打款金额) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: 可开票金额 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all duration-300">
+        <div 
+          onClick={() => handleIndividualInvoiceNavigate("available")}
+          className="group cursor-pointer select-none bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-sky-300 hover:scale-[1.012] transition-all duration-300 relative overflow-hidden"
+          title="点击下钻查看可开票金额的详细计算口径及供应商账目"
+        >
+          <div className="absolute inset-0 bg-sky-50/0 group-hover:bg-sky-50/1 transition-all duration-500 pointer-events-none" />
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
             <span className="flex items-center gap-1.5 uppercase">
               <span className="w-2 h-2 rounded-full bg-sky-400"></span>
               可开票金额
             </span>
-            <FileText className="w-4 h-4 text-slate-400" />
+            <div className="flex items-center gap-1">
+              <span className="text-[9.5px] text-sky-600 font-medium opacity-0 group-hover:opacity-100 transition-all duration-200">查看明细</span>
+              <FileText className="w-4 h-4 text-slate-455 group-hover:text-sky-500 transition-colors" />
+            </div>
           </div>
           <div className="mt-3">
             <span className="text-[10px] font-bold text-slate-400">待收票/待开票总额</span>
-            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5">
-              ¥{kpis.invoiceable.toLocaleString()}
+            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5 flex items-baseline justify-between">
+              <span>¥{kpis.invoiceable.toLocaleString()}</span>
+              <span className="text-sky-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200">➔</span>
             </h4>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-[10.5px] text-slate-550 font-bold">
-            <span>当前月度可用指标</span>
+            <span className="text-sky-600 bg-sky-50/70 px-1.5 py-0.5 rounded text-[9.5px]">查看可安排票额明细 →</span>
             <span className="text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded text-[9.5px]">额度宽松</span>
           </div>
         </div>
 
         {/* Card 2: 已开票金额 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all duration-300">
+        <div 
+          onClick={() => handleIndividualInvoiceNavigate("issued")}
+          className="group cursor-pointer select-none bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-teal-300 hover:scale-[1.012] transition-all duration-300 relative overflow-hidden"
+          title="点击下钻查看所有国家进项防伪发票明细、抵扣认证状态"
+        >
+          <div className="absolute inset-0 bg-teal-50/0 group-hover:bg-teal-50/1 transition-all duration-500 pointer-events-none" />
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
             <span className="flex items-center gap-1.5 uppercase">
               <span className="w-2 h-2 rounded-full bg-teal-400"></span>
               已开票金额
             </span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <div className="flex items-center gap-1">
+              <span className="text-[9.5px] text-[#006591] font-medium opacity-0 group-hover:opacity-100 transition-all duration-200">查看明细</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
           </div>
           <div className="mt-3">
             <span className="text-[10px] font-bold text-slate-400">开票审核已通过</span>
-            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5">
-              ¥{kpis.invoiced.toLocaleString()}
+            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5 flex items-baseline justify-between">
+              <span>¥{kpis.invoiced.toLocaleString()}</span>
+              <span className="text-emerald-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200">➔</span>
             </h4>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-[10.5px] text-slate-550 font-bold">
-            <span>税控直连开具成功率</span>
+            <span className="text-teal-600 bg-teal-50/70 px-1.5 py-0.5 rounded text-[9.5px]">查看已开票明细 →</span>
             <span className="text-emerald-600 font-mono text-[10px] font-black">100.0%</span>
           </div>
         </div>
 
         {/* Card 3: 已打款金额 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all duration-300">
+        <div 
+          onClick={() => handleIndividualInvoiceNavigate("paid")}
+          className="group cursor-pointer select-none bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-indigo-300 hover:scale-[1.012] transition-all duration-300 relative overflow-hidden"
+          title="点击下钻核对各打款账户网银直连划扣流水及财务认领记录"
+        >
+          <div className="absolute inset-0 bg-indigo-50/0 group-hover:bg-indigo-50/1 transition-all duration-500 pointer-events-none" />
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
             <span className="flex items-center gap-1.5 uppercase">
               <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
               已打款金额
             </span>
-            <Wallet className="w-4 h-4 text-indigo-400" />
+            <div className="flex items-center gap-1">
+              <span className="text-[9.5px] text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-all duration-200">查看明细</span>
+              <Wallet className="w-4 h-4 text-indigo-400 group-hover:text-indigo-500 transition-colors" />
+            </div>
           </div>
           <div className="mt-3">
             <span className="text-[10px] font-bold text-slate-400">银行流水成功支付</span>
-            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5">
-              ¥{kpis.paid.toLocaleString()}
+            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5 flex items-baseline justify-between">
+              <span>¥{kpis.paid.toLocaleString()}</span>
+              <span className="text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200">➔</span>
             </h4>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-[10.5px] text-slate-550 font-bold">
-            <span>银企直连自动拨付</span>
+            <span className="text-indigo-600 bg-indigo-50/70 px-1.5 py-0.5 rounded text-[9.5px]">查看已打款明细 →</span>
             <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[9.5px]">网银直开</span>
           </div>
         </div>
@@ -1695,6 +1776,17 @@ export default function FinanceOverviewPage() {
           </>
         )}
       </AnimatePresence>
+      {/* 7. Drill-down Detail Drawer layer (Invoiceable, Invoiced, Paid) */}
+      <OverviewKPIsDetailDrawer
+        isOpen={activeDetailType !== null}
+        onClose={closeDetailDrawer}
+        type={activeDetailType}
+        kpis={kpis}
+        timeRange={timeRange}
+        selectedPlatform={selectedPlatform}
+        selectedShop={selectedShop}
+        showToast={showToast}
+      />
     </div>
   );
 }

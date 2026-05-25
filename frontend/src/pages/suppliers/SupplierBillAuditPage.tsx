@@ -1,479 +1,962 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { 
-  DollarSign, FileSpreadsheet, CheckCircle, AlertTriangle, Scale, Plus, 
-  Search, Filter, Landmark, Sparkles, RefreshCw, FileText, ChevronRight, X
+  Building2, Plus, FileSpreadsheet, Download, RefreshCw, AlertCircle,
+  Search, Filter, Landmark, Sparkles, Check, X, FileText, Wallet, AlertTriangle, Upload
 } from "lucide-react";
-import { AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { SupplierBill, BillPayment } from "./types";
+import { INITIAL_SUPPLIER_BILLS } from "./mockData";
+import SupplierBillDrawer from "./components/SupplierBillDrawer";
 
-interface BillReconciliation {
-  id: string;
-  factoryName: string;
-  poQty: number;
-  inboundQty: number;
-  defectQty: number; // Quality issues
-  claimAmount: number; // Defect refund penalty
-  poPrice: number;
-  netPayable: number;
-  billingStatus: "待核对" | "对账差异中" | "已核对确认" | "部分付款结清";
-}
-
-interface PaymentRecord {
-  id: string;
-  factoryName: string;
-  payDate: string;
-  payAmount: number;
-  payingAccount: string;
-  operator: string;
-  relatedBillId: string;
-  status: "回执完备" | "处理中" | "待审计审核";
-}
-
-interface InvoiceRecord {
-  id: string;
-  invoiceNo: string;
-  factoryName: string;
-  invoiceAmount: number;
-  taxRate: string; // e.g. "13%" or "3%"
-  issueDate: string;
-  relatedBillId: string;
-  status: "已抵扣验证" | "待财务核销" | "偏离打回";
-}
-
-interface SupplierBillAuditPageProps {
-  defaultTab?: "audit" | "payments" | "invoices";
-}
-
-export default function SupplierBillAuditPage({ defaultTab = "audit" }: SupplierBillAuditPageProps) {
-  const [activeTab, setActiveTab] = useState<"audit" | "payments" | "invoices">(defaultTab);
-  const [search, setSearch] = useState("");
-
-  const [auditList, setAuditList] = useState<BillReconciliation[]>([
-    { id: "REC-202605-01", factoryName: "海安莱那织造有限公司", poQty: 2500, inboundQty: 2480, defectQty: 20, claimAmount: 2580, poPrice: 32, netPayable: 76780, billingStatus: "已核对确认" },
-    { id: "REC-202605-02", factoryName: "织里丰盛婴童服饰厂", poQty: 1200, inboundQty: 1150, defectQty: 50, claimAmount: 5800, poPrice: 58, netPayable: 60900, billingStatus: "对账差异中" },
-    { id: "REC-202605-03", factoryName: "常熟汇豪针织加工商行", poQty: 3000, inboundQty: 3000, defectQty: 10, claimAmount: 800, poPrice: 15, netPayable: 44200, billingStatus: "部分付款结清" },
-    { id: "REC-202605-04", factoryName: "海宁市贝贝童装大卖部", poQty: 800, inboundQty: 820, defectQty: 0, claimAmount: 0, poPrice: 42, netPayable: 34440, billingStatus: "待核对" },
-    { id: "REC-202605-05", factoryName: "温岭市依依童装制品厂", poQty: 1500, inboundQty: 1460, defectQty: 40, claimAmount: 4800, poPrice: 41, netPayable: 55060, billingStatus: "待核对" }
-  ]);
-
-  const [payments, setPayments] = useState<PaymentRecord[]>([
-    { id: "PAY-99201", factoryName: "海安莱那织造有限公司", payDate: "2026-05-18", payAmount: 76780, payingAccount: "建设银行 (乐娜对公)", operator: "张财务", relatedBillId: "REC-202605-01", status: "回执完备" },
-    { id: "PAY-99202", factoryName: "常熟汇豪针织加工商行", payDate: "2026-05-20", payAmount: 20000, payingAccount: "招商银行 (公司自持)", operator: "财务助理", relatedBillId: "REC-202605-03", status: "回执完备" },
-    { id: "PAY-99203", factoryName: "海宁市贝贝童装大卖部", payDate: "2026-05-22", payAmount: 34440, payingAccount: "泰隆网盾卡 (余英)", operator: "张财务", relatedBillId: "REC-202605-04", status: "待审计审核" }
-  ]);
-
-  const [invoices, setInvoices] = useState<InvoiceRecord[]>([
-    { id: "INV-80129", invoiceNo: "No.8190392014", factoryName: "海安莱那织造有限公司", invoiceAmount: 76780, taxRate: "13%", issueDate: "2026-05-19", relatedBillId: "REC-202605-01", status: "已抵扣验证" },
-    { id: "INV-80130", invoiceNo: "No.5710294102", factoryName: "常熟汇豪针织加工商行", invoiceAmount: 44200, taxRate: "3% (小规模应税)", issueDate: "2026-05-21", relatedBillId: "REC-202605-03", status: "已抵扣验证" },
-    { id: "INV-80131", invoiceNo: "No.4410258102", factoryName: "温岭市依依童装制品厂", invoiceAmount: 55060, taxRate: "13%", issueDate: "2026-05-23", relatedBillId: "REC-202605-05", status: "待财务核销" }
-  ]);
-
-  // Drawer toggles
-  const [isPayFormOpen, setIsPayFormOpen] = useState(false);
-  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false);
-
-  // Form states - Payments
-  const [payFactory, setPayFactory] = useState("");
-  const [payAmount, setPayAmount] = useState(0);
-  const [payAccount, setPayAccount] = useState("建设银行 (乐娜对公)");
+export default function SupplierBillAuditPage() {
+  const [bills, setBills] = useState<SupplierBill[]>(INITIAL_SUPPLIER_BILLS);
   
-  // Form states - Invoices
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceAmount, setInvoiceAmount] = useState(0);
-  const [invoiceFactory, setInvoiceFactory] = useState("");
-  const [invoiceRate, setInvoiceRate] = useState("13%");
+  // Filtering states
+  const [selectedMonth, setSelectedMonth] = useState("全部");
+  const [selectedSupplier, setSelectedSupplier] = useState("全部");
+  const [selectedAuditStatus, setSelectedAuditStatus] = useState("全部");
+  const [selectedInvoiceStatus, setSelectedInvoiceStatus] = useState("全部");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    setActiveTab(defaultTab);
-  }, [defaultTab]);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
-  const handleAddNewPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!payFactory || payAmount <= 0) return;
+  // Interaction Modals / Drawers states
+  const [activeBillIdForDrawer, setActiveBillIdForDrawer] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-    const newPay: PaymentRecord = {
-      id: `PAY-${Math.floor(Math.random() * 90000 + 10000)}`,
-      factoryName: payFactory,
-      payDate: new Date().toISOString().split("T")[0],
-      payAmount: Number(payAmount),
-      payingAccount: payAccount,
-      operator: "当值出纳财务",
-      relatedBillId: "REC-202605-手工挂接",
-      status: "待审计审核"
-    };
+  // Quick Payment Modal states
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payModalBillId, setPayModalBillId] = useState<string | null>(null);
+  const [payDate, setPayDate] = useState(new Date().toISOString().split("T")[0]);
+  const [payAmount, setPayAmount] = useState("");
+  const [payAccount, setPayAccount] = useState("招商银行 (对公往来端 9120)");
+  const [payRemark, setPayRemark] = useState("");
 
-    setPayments(prev => [newPay, ...prev]);
-    setIsPayFormOpen(false);
-    alert("🟢 付款业务成功登记，请催促代工厂法务部门核实账单，随后将上传电子回执 PDF 存盘。");
+  // Simulated Import Modals
+  const [showBillImportModal, setShowBillImportModal] = useState(false);
+  const [showInboundImportModal, setShowInboundImportModal] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  // Toast notifications
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleAddNewInvoice = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!invoiceNo || !invoiceFactory) return;
+  // List of unique suppliers from mockData
+  const suppliersDropdownList = useMemo(() => {
+    const list = new Set<string>();
+    bills.forEach(b => list.add(b.supplierName));
+    return Array.from(list);
+  }, [bills]);
 
-    const newInv: InvoiceRecord = {
-      id: `INV-${Math.floor(Math.random() * 9000 + 80000)}`,
-      invoiceNo: invoiceNo,
-      factoryName: invoiceFactory,
-      invoiceAmount: Number(invoiceAmount),
-      taxRate: invoiceRate,
-      issueDate: new Date().toISOString().split("T")[0],
-      relatedBillId: "REC-202605-账单抵扣",
-      status: "待财务核销"
-    };
-
-    setInvoices(prev => [newInv, ...prev]);
-    setIsInvoiceFormOpen(false);
-    alert("🟢 增值税发票登记成功！财务主管已录入税控中台校验真伪并核实进项抵扣金。");
+  // Handle direct "标记已确认" click
+  const handleMarkConfirmed = (billId: string) => {
+    setBills(prev => prev.map(bill => {
+      if (bill.id === billId) {
+        return {
+          ...bill,
+          auditStatus: "已确认"
+        };
+      }
+      return bill;
+    }));
+    showToast(`🟢 账单 ${billId} 已快速标记为 [已确认] 状态`);
   };
+
+  // Handles updating the bill inside the detail drawer recursively 
+  const handleUpdateBillInPage = (updatedBill: SupplierBill) => {
+    setBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b));
+  };
+
+  // Filtering Logic
+  const filteredBills = useMemo(() => {
+    return bills.filter(bill => {
+      // 1. Month Filter
+      if (selectedMonth !== "全部" && bill.period !== selectedMonth) return false;
+
+      // 2. Supplier Filter
+      if (selectedSupplier !== "全部" && bill.supplierName !== selectedSupplier) return false;
+
+      // 3. Reconcile Audit Status Filter
+      if (selectedAuditStatus !== "全部" && bill.auditStatus !== selectedAuditStatus) return false;
+
+      // 4. Invoice Status Filter
+      if (selectedInvoiceStatus !== "全部" && bill.invoiceStatus !== selectedInvoiceStatus) return false;
+
+      // 5. Text Search (采购单号 / 款号 / SKU / 供应商)
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchSupplierName = bill.supplierName.toLowerCase().includes(query);
+        const matchBillID = bill.id.toLowerCase().includes(query);
+        const matchSkuDetails = bill.skus.some(sku => 
+          sku.poNo.toLowerCase().includes(query) ||
+          sku.styleNo.toLowerCase().includes(query) ||
+          sku.skuInfo.toLowerCase().includes(query) ||
+          sku.name.toLowerCase().includes(query)
+        );
+        if (!matchSupplierName && !matchBillID && !matchSkuDetails) return false;
+      }
+
+      return true;
+    });
+  }, [bills, selectedMonth, selectedSupplier, selectedAuditStatus, selectedInvoiceStatus, searchQuery]);
+
+  // Overall Data sums based on Filtered data list
+  const metrics = useMemo(() => {
+    let billTotal = 0;
+    let inboundTotal = 0;
+    let diffTotal = 0;
+    let confirmedTotal = 0;
+    let paidTotal = 0;
+    let remainingTotal = 0;
+
+    filteredBills.forEach(b => {
+      billTotal += b.supplierAmt;
+      inboundTotal += b.systemAmt;
+      diffTotal += Math.abs(b.diffAmt);
+      if (b.auditStatus === "已确认" || b.auditStatus === "已结清") {
+        confirmedTotal += b.finalAmt;
+      }
+      paidTotal += b.paidAmt;
+      remainingTotal += b.remainingAmt;
+    });
+
+    return {
+      billTotal,
+      inboundTotal,
+      diffTotal,
+      confirmedTotal,
+      paidTotal,
+      remainingTotal
+    };
+  }, [filteredBills]);
+
+  // Pagination Logic
+  const paginatedBills = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredBills.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredBills, currentPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBills.length / itemsPerPage));
+
+  // Trigger Simple Register Payment Dialog
+  const openPayModal = (billId: string) => {
+    const targetBill = bills.find(b => b.id === billId);
+    if (targetBill) {
+      setPayModalBillId(billId);
+      setPayAmount(targetBill.remainingAmt.toString());
+      setPayRemark("");
+      setShowPayModal(true);
+    }
+  };
+
+  const handlePayModalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseFloat(payAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast("⚠️ 请输入有效的付款金额");
+      return;
+    }
+
+    if (!payModalBillId) return;
+
+    setBills(prev => prev.map(bill => {
+      if (bill.id === payModalBillId) {
+        const nextPaid = bill.paidAmt + amount;
+        const nextRemaining = Math.max(0, bill.finalAmt - nextPaid);
+        const nextStatus = nextRemaining === 0 ? "已结清" : bill.auditStatus;
+
+        const newPayment: BillPayment = {
+          id: `PAY-${Date.now().toString().slice(-6)}`,
+          date: payDate,
+          entity: "杭州乐娜童衣有限公司",
+          account: payAccount,
+          supplier: bill.supplierName,
+          amount: amount,
+          type: "货款",
+          relatedBill: bill.id,
+          voucher: `V_TRANSFER_POP-${bill.id}.pdf`,
+          operator: "陈财务",
+          remark: payRemark || "通过工作台列表直汇"
+        };
+
+        return {
+          ...bill,
+          paidAmt: nextPaid,
+          remainingAmt: nextRemaining,
+          auditStatus: nextStatus as any,
+          payments: [newPayment, ...bill.payments]
+        };
+      }
+      return bill;
+    }));
+
+    setShowPayModal(false);
+    showToast(`🟢 登记付款成功！已对账扣缴，自动计算剩余欠款项`);
+  };
+
+  // Handles simulated Excel drag uploads
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setUploadedFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const triggerBillImportSim = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowBillImportModal(false);
+    setUploadedFile(null);
+    showToast("🎉 成功模拟导入 18 笔供应商大货申报账单！系统已接入待核对池。");
+  };
+
+  const triggerInboundImportSim = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowInboundImportModal(false);
+    setUploadedFile(null);
+    showToast("🎉 聚水潭采购入库、销退款明细数据实时导入成功！已完成二方数据对碰比对。");
+  };
+
+  const handleExportReconciliation = () => {
+    showToast("📊 报表打包中：已下载本期供应商账单核对、最终合意已付欠款对账总大表 (XLSX, 印发版)。");
+  };
+
+  const activeBillForDrawer = bills.find(b => b.id === activeBillIdForDrawer) || null;
 
   return (
-    <div className="space-y-6 select-text pb-10">
+    <div className="space-y-6 select-text pb-12 font-sans text-slate-800 bg-[#f8f9fc]">
       
-      {/* Page Title with sub-menu summary cards */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs">
+      {/* Dynamic Tiny Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -20, x: "-50%" }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white font-bold text-xs py-2.5 px-6 rounded-full shadow-2xl z-[150] flex items-center space-x-2 select-none"
+          >
+            <span className="text-emerald-400">●</span>
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 一、页面顶部 Block */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-3xs select-none">
         <div>
-          <h1 className="text-base md:text-lg font-black text-slate-950 flex items-center gap-2">
-            <Scale className="w-5 h-5 text-[#006591]" />
-            代工厂账套结算与税控中台 (Phase 1)
-          </h1>
-          <p className="text-xs text-slate-450 mt-1">
-            连接聚水潭到货验质流，扣除尺码偏离与退货罚损，最终核实净应付差金，提供批量核销功能。
-          </p>
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-sky-600 text-white rounded-xl shadow-xs shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-black text-slate-900 leading-none">
+                供应商账单核对
+              </h1>
+              <p className="text-xs text-slate-400 mt-1.8 leading-none">
+                核对供应商账单、入库金额、付款记录与剩余欠款
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {activeTab === "payments" && (
-            <button
-              onClick={() => {
-                setPayFactory("");
-                setPayAmount(0);
-                setIsPayFormOpen(true);
-              }}
-              className="px-4 py-2 bg-[#006591] hover:bg-[#004c6e] text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" />
-              <span>登记付款挂账单</span>
-            </button>
-          )}
-
-          {activeTab === "invoices" && (
-            <button
-              onClick={() => {
-                setInvoiceNo("");
-                setInvoiceFactory("");
-                setInvoiceAmount(0);
-                setIsInvoiceFormOpen(true);
-              }}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" />
-              <span>登记到票抵扣</span>
-            </button>
-          )}
+        {/* 3 Upper-Right Core buttons */}
+        <div className="flex items-center flex-wrap gap-2 text-xs font-bold font-sans">
+          <button 
+            onClick={() => setShowBillImportModal(true)} 
+            className="px-4 py-2 hover:bg-slate-50 border border-slate-200 text-slate-650 bg-white rounded-xl cursor-pointer transition-colors shadow-3xs flex items-center gap-1.5 font-black"
+          >
+            <Upload className="w-4 h-4 text-emerald-600" />
+            <span>导入供应商账单</span>
+          </button>
 
           <button 
-            onClick={() => alert("功能开发：账目已通过。正在准备压缩电子账套 PDF 的发运明细...")}
-            className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-slate-655 text-xs font-bold rounded-lg cursor-pointer"
+            onClick={() => setShowInboundImportModal(true)}
+            className="px-4 py-2 hover:bg-slate-50 border border-slate-200 text-slate-650 bg-white rounded-xl cursor-pointer transition-colors shadow-3xs flex items-center gap-1.5 font-black"
           >
-            导出 Excel 审计
+            <RefreshCw className="w-4 h-4 text-blue-600" />
+            <span>导入入库数据</span>
+          </button>
+
+          <button 
+            onClick={handleExportReconciliation}
+            className="px-4 py-2 hover:bg-slate-50 border border-slate-200 text-slate-650 bg-white rounded-xl cursor-pointer transition-colors shadow-3xs flex items-center gap-1.5 font-black"
+          >
+            <Download className="w-4 h-4 text-slate-500" />
+            <span>导出当前表格</span>
           </button>
         </div>
       </div>
 
-      {/* Navigation Sub-menu Tabs */}
-      <div className="flex border-b border-slate-200">
+      {/* 二、筛选区 Filter Row (Simple, compact) */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-3xs select-none">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+          {/* 1. Month selection */}
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">结算月份</label>
+            <select 
+              value={selectedMonth}
+              onChange={e => { setSelectedMonth(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-[#f8f9fc] hover:bg-slate-100/60 text-slate-700 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold leading-normal focus:outline-none"
+            >
+              <option value="全部">全部月份</option>
+              <option value="2026-05">2026-05 (最新期)</option>
+              <option value="2026-04">2026-04 (往期)</option>
+            </select>
+          </div>
+
+          {/* 2. Supplier dropdown */}
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">供应商</label>
+            <select 
+              value={selectedSupplier}
+              onChange={e => { setSelectedSupplier(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-[#f8f9fc] hover:bg-slate-100/60 text-slate-700 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold leading-normal focus:outline-none col-span-1"
+            >
+              <option value="全部">全部核心供应商</option>
+              {suppliersDropdownList.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 3. Reconcile Audit Status */}
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">核对状态</label>
+            <select 
+              value={selectedAuditStatus}
+              onChange={e => { setSelectedAuditStatus(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-[#f8f9fc] hover:bg-slate-100/60 text-slate-700 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold leading-normal focus:outline-none"
+            >
+              <option value="全部">全部核对状态</option>
+              <option value="待核对">待核对 (灰)</option>
+              <option value="有差异">有差异 (橙)</option>
+              <option value="已确认">已确认 (绿)</option>
+              <option value="已结清">已结清 (深绿)</option>
+            </select>
+          </div>
+
+          {/* 4. Invoice status */}
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">开票状态</label>
+            <select 
+              value={selectedInvoiceStatus}
+              onChange={e => { setSelectedInvoiceStatus(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-[#f8f9fc] hover:bg-slate-100/60 text-slate-700 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold leading-normal focus:outline-none"
+            >
+              <option value="全部">全部开票状态</option>
+              <option value="未开票">未开票</option>
+              <option value="已开票">已开票</option>
+            </select>
+          </div>
+
+          {/* 5. Inbound text search */}
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">检索单号或款号/SKU</label>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                placeholder="搜索单号 / 款号 / SKU..."
+                className="w-full bg-[#f8f9fc] border border-slate-200 rounded-xl py-1.8 pl-8.5 pr-3 text-xs font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 三、数据汇总卡片 Metrics Panel */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 select-none">
         {[
-          { key: "audit", label: "供应商账单核对", subtitle: "数量核对与退款抵扣" },
-          { key: "payments", label: "付款登记流水", subtitle: "银行对账与过账" },
-          { key: "invoices", label: "开票登记验证", subtitle: "进项税合规与核销" }
-        ].map(item => (
-          <button
-            key={item.key}
-            onClick={() => setActiveTab(item.key as any)}
-            className={`px-5 py-3 text-xs font-black border-b-2 text-left space-y-0.5 transition-all cursor-pointer ${
-              activeTab === item.key 
-                ? "border-[#006591] text-[#006591]" 
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <div className="font-bold text-[11px] block">{item.label}</div>
-            <div className="text-[9.5px] font-normal text-slate-400">{item.subtitle}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Global Filter Bar */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-grow">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="全文检索关联代工厂商、采购单号、账期状态、发票代码..."
-            className="w-full bg-white border border-slate-200 rounded-lg py-2.5 pl-10 pr-3 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#006591]"
-          />
-        </div>
-      </div>
-
-      {/* TAB 1: 供应商账单核对 */}
-      {activeTab === "audit" && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-[#f8f9ff] text-slate-400 font-bold uppercase text-[9.5px] border-b border-slate-100 select-none">
-              <tr>
-                <th className="p-4">对账单流水号</th>
-                <th className="p-4">指定代工厂字号</th>
-                <th className="p-4">PO 指令件数</th>
-                <th className="p-4">实收到货数</th>
-                <th className="p-4">疵次品扣款</th>
-                <th className="p-4">协议制造单价</th>
-                <th className="p-4">扣罚后净应付应退金额</th>
-                <th className="p-4">校验对比偏离</th>
-                <th className="p-4 text-center">当前商务关节点</th>
-                <th className="p-4 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-semibold text-slate-705">
-              {auditList
-                .filter(a => a.factoryName.toLowerCase().includes(search.toLowerCase()))
-                .map(a => {
-                  const arrivalDiff = a.poQty - a.inboundQty;
-                  return (
-                    <tr key={a.id} className="hover:bg-slate-50/20">
-                      <td className="p-4 font-mono font-bold text-[#002045]">{a.id}</td>
-                      <td className="p-4 font-black text-slate-800">{a.factoryName}</td>
-                      <td className="p-4 font-mono font-bold">{a.poQty.toLocaleString()} 件</td>
-                      <td className="p-4 font-mono font-bold text-slate-600">{a.inboundQty.toLocaleString()} 件</td>
-                      <td className="p-4 text-rose-500 font-mono font-black">
-                        {a.claimAmount > 0 ? `-¥${a.claimAmount.toLocaleString()}` : "¥0"}
-                        {a.defectQty > 0 && <span className="text-[9.5px] text-rose-400 font-normal block">({a.defectQty}件剔退)</span>}
-                      </td>
-                      <td className="p-4 font-mono">¥{a.poPrice}/件</td>
-                      <td className="p-4 font-mono font-black text-slate-900">¥{a.netPayable.toLocaleString()}</td>
-                      <td className="p-4">
-                        {arrivalDiff > 0 ? (
-                          <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
-                            少到 {arrivalDiff} 件 (偏负)
-                          </span>
-                        ) : arrivalDiff < 0 ? (
-                          <span className="text-[10px] text-[#0ea5e9] font-bold bg-sky-50 px-1.5 py-0.5 rounded">
-                            超到 {Math.abs(arrivalDiff)} 件 (溢)
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
-                            无偏离
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${
-                          a.billingStatus === "已核对确认" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                          a.billingStatus === "部分付款结清" ? "bg-sky-50 text-sky-600 border-sky-100" :
-                          a.billingStatus === "待核对" ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-red-50 text-red-600 border-red-150 animate-pulse"
-                        }`}>
-                          {a.billingStatus}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right select-none">
-                        <button 
-                          onClick={() => alert(`【财务确认账目】已核准 ${a.factoryName} 的对应款底，该笔账单应付结算 ¥${a.netPayable} 进入出纳池。`)}
-                          className="text-[#006591] hover:text-[#004c6e] text-[10.5px] cursor-pointer"
-                        >
-                          确认对账金
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* TAB 2: 付款登记 */}
-      {activeTab === "payments" && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-[#f8f9ff] text-slate-400 font-bold uppercase text-[9.5px] border-b border-slate-100 select-none">
-              <tr>
-                <th className="p-4">付款流水 ID</th>
-                <th className="p-4">目标代工厂商</th>
-                <th className="p-4">出纳过账日</th>
-                <th className="p-4">款项金额</th>
-                <th className="p-4">支付银行账户</th>
-                <th className="p-4">操作会计/出纳</th>
-                <th className="p-4">所对账对账单号</th>
-                <th className="p-4 text-center">审批状态</th>
-                <th className="p-4 text-right">审计回单</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-semibold text-slate-705">
-              {payments
-                .filter(p => p.factoryName.toLowerCase().includes(search.toLowerCase()))
-                .map(p => (
-                  <tr key={p.id} className="hover:bg-slate-50/20">
-                    <td className="p-4 font-mono font-bold text-[#002045]">{p.id}</td>
-                    <td className="p-4 font-black text-slate-800">{p.factoryName}</td>
-                    <td className="p-4 font-mono text-slate-500">{p.payDate}</td>
-                    <td className="p-4 font-mono font-black text-[#006591]">¥{p.payAmount.toLocaleString()}</td>
-                    <td className="p-4 font-bold text-slate-600">{p.payingAccount}</td>
-                    <td className="p-4 font-medium text-slate-500">{p.operator}</td>
-                    <td className="p-4 font-mono text-slate-450">{p.relatedBillId}</td>
-                    <td className="p-4 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-black ${
-                        p.status === "回执完备" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-amber-50 text-amber-600 border border-amber-100"
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right select-none">
-                      <button 
-                        onClick={() => alert(`查看付款凭证：PAY_WATER_PDF_SLIP#${p.id}`)}
-                        className="text-[10px] text-slate-500 hover:text-slate-800 underline cursor-pointer"
-                      >
-                        PDF 原件下载
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* TAB 3: 开票登记 */}
-      {activeTab === "invoices" && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-          <table className="w-full text-left text-[11px]">
-            <thead className="bg-[#f8f9ff] text-slate-400 font-bold uppercase text-[9.5px] border-b border-slate-105 select-none">
-              <tr>
-                <th className="p-4">系统入账 ID</th>
-                <th className="p-4">开票发票代码</th>
-                <th className="p-4">关联开票工厂</th>
-                <th className="p-4">发票税后金额</th>
-                <th className="p-4 text-center">适用税率</th>
-                <th className="p-4">发票开具日期</th>
-                <th className="p-4">所核销应付单号</th>
-                <th className="p-4 text-center">税控抵扣状态</th>
-                <th className="p-4 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-semibold text-slate-705">
-              {invoices
-                .filter(i => i.factoryName.toLowerCase().includes(search.toLowerCase()))
-                .map(i => (
-                  <tr key={i.id} className="hover:bg-slate-50/20">
-                    <td className="p-4 font-mono font-bold text-[#002045]">{i.id}</td>
-                    <td className="p-4 font-mono font-bold text-slate-800">{i.invoiceNo}</td>
-                    <td className="p-4 font-black text-slate-805">{i.factoryName}</td>
-                    <td className="p-4 font-mono font-black text-slate-900">¥{i.invoiceAmount.toLocaleString()}</td>
-                    <td className="p-4 text-center font-mono font-bold text-slate-500">{i.taxRate}</td>
-                    <td className="p-4 font-mono text-slate-500">{i.issueDate}</td>
-                    <td className="p-4 font-mono text-slate-450">{i.relatedBillId}</td>
-                    <td className="p-4 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${
-                        i.status === "已抵扣验证" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-amber-50 text-amber-550 border border-amber-100"
-                      }`}>
-                        {i.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right select-none">
-                      <button 
-                        onClick={() => alert(`税控联网核查：发票代号 [${i.invoiceNo}] 真伪及所属税目抵扣合规，核销成功。`)}
-                        className="text-[10px] text-[#006591] hover:text-[#005175] cursor-pointer"
-                      >
-                        联网验证
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Drawer Payments Form */}
-      <AnimatePresence>
-        {isPayFormOpen && (
-          <>
-            <div onClick={() => setIsPayFormOpen(false)} className="fixed inset-0 bg-black/30 backdrop-blur-xs z-[80]" />
-            <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl z-[90] flex flex-col border-l border-slate-205">
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <span className="text-xs font-black text-slate-800">💸 登记工厂付款流水单</span>
-                <button onClick={() => setIsPayFormOpen(false)} className="p-1 hover:bg-slate-100 rounded-full cursor-pointer text-slate-450"><X className="w-5 h-5" /></button>
+          { label: "本月账单总额", value: metrics.billTotal, style: "slate", icon: <FileSpreadsheet className="w-4 h-4 text-blue-500" /> },
+          { label: "系统入库应付款", value: metrics.inboundTotal, style: "slate", icon: <Landmark className="w-4 h-4 text-indigo-500" /> },
+          { 
+            label: "账目比对差异", 
+            value: metrics.diffTotal, 
+            style: metrics.diffTotal > 0 ? "warn" : "green", 
+            icon: <AlertTriangle className={`w-4 h-4 ${metrics.diffTotal > 0 ? "text-amber-500" : "text-emerald-500"}`} /> 
+          },
+          { label: "已确认应付", value: metrics.confirmedTotal, style: "green", icon: <Check className="w-4 h-4 text-emerald-500" /> },
+          { label: "已付款金额", value: metrics.paidTotal, style: "teal", icon: <Wallet className="w-4 h-4 text-teal-500" /> },
+          { label: "剩余欠款总计", value: metrics.remainingTotal, style: "rose", icon: <Sparkles className="w-4 h-4 text-rose-500 animate-pulse" /> }
+        ].map((card, idx) => {
+          const isWarn = card.style === "warn" && card.value > 0;
+          const isRose = card.style === "rose";
+          const isGreen = card.style === "green";
+          const isTeal = card.style === "teal";
+          
+          return (
+            <div 
+              key={idx}
+              className={`bg-white border hover:border-slate-300 rounded-2xl p-4.5 shadow-3xs hover:shadow-2xs transition-all space-y-1.5 relative overflow-hidden ${
+                isRose ? "ring-1 ring-rose-50/50 bg-[#fffbfa]/70 border-rose-100" : 
+                isWarn ? "ring-1 ring-amber-50/50 bg-[#fffdf9] border-amber-100" : "border-slate-200/80"
+              }`}
+            >
+              <div className="flex items-center justify-between text-[10px] text-slate-400 font-extrabold uppercase tracking-wide leading-none">
+                <span>{card.label}</span>
+                {card.icon}
               </div>
-              <form onSubmit={handleAddNewPayment} className="flex-grow p-5 space-y-4 overflow-y-auto">
+              <div className="flex items-baseline space-x-0.2 select-text pt-1">
+                <span className="text-xs text-slate-400 font-bold font-mono">¥</span>
+                <span className={`text-[17px] font-black font-mono tracking-tight leading-none ${
+                  isRose ? "text-rose-600 font-extrabold" : 
+                  isWarn ? "text-amber-600 font-black animate-pulse" : 
+                  isGreen ? "text-emerald-600" :
+                  isTeal ? "text-teal-600" : "text-slate-900"
+                }`}>
+                  {card.value.toLocaleString()}
+                </span>
+              </div>
+              <div className="text-[9px] font-bold text-slate-400 leading-none pt-0.5">
+                {isRose && card.value > 0 ? (
+                  <span className="text-rose-600 bg-rose-50/50 px-1 py-0.2 rounded">有未结供应商账目</span>
+                ) : isWarn ? (
+                  <span className="text-amber-600 bg-amber-50 px-1 py-0.2 rounded">存在偏位差异待财务确认</span>
+                ) : (
+                  <span className="text-slate-400">实时对碰汇缴统计</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 四、主表：供应商账单列表 */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-3xs overflow-hidden">
+        
+        {/* Table information sub-header */}
+        <div className="bg-slate-50/40 border-b border-slate-100 p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs select-none">
+          <div className="flex items-center space-x-2">
+            <span className="text-slate-450 font-bold block">
+              当前对账单清单已过滤: <strong className="text-slate-800 font-mono text-sm">{filteredBills.length}</strong> / {bills.length} 行记录
+            </span>
+            {searchQuery && (
+              <span className="px-2 py-0.5 bg-sky-50 text-sky-800 rounded font-black text-[9.5px]">
+                检索关键: &quot;{searchQuery}&quot;
+              </span>
+            )}
+          </div>
+          <div className="text-slate-400 text-[10.5px] font-medium">
+            财务一人操作面板 · 所有账目及打款明细自动核销折旧，不涉及流程审批
+          </div>
+        </div>
+
+        {/* Dynamic Spreadsheet View */}
+        <div className="overflow-x-auto min-h-[260px]">
+          <table className="w-full text-left text-[11px]">
+            <thead className="bg-[#f8f9fd] text-slate-400 font-extrabold uppercase text-[9px] border-b border-slate-200/80 select-none">
+              <tr>
+                <th className="p-4 pl-6 text-center w-12">核对期</th>
+                <th className="p-4">账单月份</th>
+                <th className="p-4">核心供应商</th>
+                <th className="p-4">结算方式</th>
+                <th className="p-4 text-right">账单申报金额</th>
+                <th className="p-4 text-right">系统人入库额</th>
+                <th className="p-4 text-right">契约双向差异扣款</th>
+                <th className="p-4 text-right">财务确认应付额</th>
+                <th className="p-4 text-right text-teal-600">已付款金额</th>
+                <th className="p-4 text-right text-rose-600">剩余应付欠款</th>
+                <th className="p-4 text-center">发票开具</th>
+                <th className="p-4 text-center">核对状态</th>
+                <th className="p-4">财务经办</th>
+                <th className="p-4 text-right pr-6">操作工作台</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+              {paginatedBills.map(b => {
+                const diff = b.diffAmt;
+                const outstanding = b.remainingAmt;
+
+                // Color mappings for requested states: 待核对 (gray), 有差异 (orange), 已确认 (green), 已结清 (dark green)
+                let statusClassName = "bg-slate-100 text-slate-500 border-slate-200";
+                if (b.auditStatus === "有差异") {
+                  statusClassName = "bg-amber-50 text-amber-600 border-amber-200";
+                } else if (b.auditStatus === "已确认") {
+                  statusClassName = "bg-emerald-50 text-emerald-600 border-emerald-200";
+                } else if (b.auditStatus === "已结清") {
+                  statusClassName = "bg-teal-50 text-teal-800 border-teal-200";
+                }
+
+                return (
+                  <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                    {/* Tiny visual state dot indicator */}
+                    <td className="p-4 pl-6 text-center select-none">
+                      <span className={`inline-block w-2 h-2 rounded-full ${
+                        b.auditStatus === "有差异" ? "bg-amber-500" :
+                        b.auditStatus === "已确认" ? "bg-emerald-500" :
+                        b.auditStatus === "已结清" ? "bg-teal-600" : "bg-slate-400"
+                      }`} />
+                    </td>
+
+                    {/* Period Month */}
+                    <td className="p-4 font-mono text-slate-500">
+                      {b.period}
+                    </td>
+
+                    {/* Supplier */}
+                    <td className="p-4 font-black text-slate-900 text-[11.5px]">
+                      {b.supplierName}
+                    </td>
+
+                    {/* Settlement mode */}
+                    <td className="p-4 text-slate-500">
+                      {b.settlementMode}
+                    </td>
+
+                    {/* Supplier Bill amount */}
+                    <td className="p-4 text-right font-mono">
+                      ¥{b.supplierAmt.toLocaleString()}
+                    </td>
+
+                    {/* System inbound cost */}
+                    <td className="p-4 text-right font-mono text-slate-600">
+                      ¥{b.systemAmt.toLocaleString()}
+                    </td>
+
+                    {/* Diff amount badge */}
+                    <td className="p-4 text-right">
+                      {diff === 0 ? (
+                        <span className="text-emerald-600 text-[10px] font-black bg-emerald-50 px-2 py-0.5 rounded leading-none">
+                          无差异
+                        </span>
+                      ) : (
+                        <span className="text-amber-600 font-mono font-black text-[10px] bg-amber-50 px-1.8 py-0.5 rounded">
+                          差 ¥{diff.toLocaleString()}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Final confirmed payable */}
+                    <td className="p-4 text-right font-mono font-bold text-slate-900">
+                      ¥{b.finalAmt.toLocaleString()}
+                    </td>
+
+                    {/* Paid ledger amount */}
+                    <td className="p-4 text-right font-mono text-teal-600">
+                      ¥{b.paidAmt.toLocaleString()}
+                    </td>
+
+                    {/* Remaining unpaid debt */}
+                    <td className="p-4 text-right font-mono text-rose-600 font-black bg-rose-50/5">
+                      ¥{outstanding.toLocaleString()}
+                    </td>
+
+                    {/* Invoice status badge */}
+                    <td className="p-4 text-center select-none">
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${
+                        b.invoiceStatus === "已开票" ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-slate-100 text-slate-400 border-slate-200"
+                      }`}>
+                        {b.invoiceStatus}
+                      </span>
+                    </td>
+
+                    {/* Reconcile Audit Status (Requested labels) */}
+                    <td className="p-4 text-center select-none">
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${statusClassName}`}>
+                        {b.auditStatus === "未核对" ? "待核对" : b.auditStatus === "已付款" ? "已结清" : b.auditStatus}
+                      </span>
+                    </td>
+
+                    {/* In-office handler clerk */}
+                    <td className="p-4 text-slate-400 font-normal">
+                      {b.owner}
+                    </td>
+
+                    {/* Work Actions columns */}
+                    <td className="p-4 text-right select-none space-x-2.5 whitespace-nowrap pr-6 font-bold">
+                      <button 
+                        onClick={() => {
+                          setActiveBillIdForDrawer(b.id);
+                          setIsDrawerOpen(true);
+                        }}
+                        className="text-[#006591] hover:text-[#004c6e] hover:underline cursor-pointer"
+                      >
+                        查看明细
+                      </button>
+
+                      {b.auditStatus !== "已确认" && b.auditStatus !== "已结清" && (
+                        <button 
+                          onClick={() => handleMarkConfirmed(b.id)}
+                          className="text-emerald-600 hover:text-emerald-800 hover:underline cursor-pointer"
+                        >
+                          标记已确认
+                        </button>
+                      )}
+
+                      {outstanding > 0 && (
+                        <button 
+                          onClick={() => openPayModal(b.id)}
+                          className="text-amber-600 hover:text-amber-800 hover:underline cursor-pointer"
+                        >
+                          登记付款
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {filteredBills.length === 0 && (
+                <tr>
+                  <td colSpan={14} className="p-12 text-center text-slate-400 select-none">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2">
+                      <AlertCircle className="w-8 h-8 text-slate-300" />
+                      <p className="text-xs font-bold text-slate-500">无法检索到契合过滤条件的供应商账套记录</p>
+                      <p className="text-[10px] text-slate-350">您可以尝试重置上方检索条件或重新上传 Excel 大单</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Dynamic Static Pagination footer */}
+        <div className="bg-slate-50/50 border-t border-slate-100 p-4 flex items-center justify-between select-none text-xs text-slate-500">
+          <span>
+            当前展示 <strong className="text-slate-800 font-mono">{filteredBills.length}</strong> 笔记录，共 <strong className="text-slate-800 font-mono">{totalPages}</strong> 页
+          </span>
+          <div className="flex items-center space-x-1 font-bold">
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              上页
+            </button>
+            {Array.from({ length: totalPages }).map((_, idx) => (
+              <button 
+                key={idx}
+                onClick={() => setCurrentPage(idx + 1)}
+                className={`w-7.5 h-7.5 rounded-lg border text-center font-mono ${
+                  currentPage === idx + 1 
+                    ? "bg-sky-600 border-sky-600 text-white font-black" 
+                    : "bg-white border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer"
+                }`}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              下页
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Slide-over Detail Drawer Component (Three blocks logic inside) */}
+      <SupplierBillDrawer 
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        bill={activeBillForDrawer}
+        onUpdateBill={handleUpdateBillInPage}
+        onToast={showToast}
+      />
+
+      {/* A. Quick Payment Register Modal (弹窗交互为核心) */}
+      <AnimatePresence>
+        {showPayModal && (
+          <>
+            <div onClick={() => setShowPayModal(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs z-[130]" />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="fixed top-32 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border border-slate-100 rounded-2xl shadow-2xl z-[140] p-6 text-slate-700"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 select-none">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                  <Wallet className="w-4 h-4 text-amber-500" />
+                  <span>登记付款记录</span>
+                </h3>
+                <button 
+                  onClick={() => setShowPayModal(false)}
+                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handlePayModalSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-450 mb-1.5">收款对象 (代工厂商) *</label>
-                  <input type="text" required value={payFactory} onChange={e => setPayFactory(e.target.value)} placeholder="例如：织里丰盛婴童服饰厂" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs" />
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">付款日期</label>
+                  <input 
+                    type="date"
+                    required
+                    value={payDate}
+                    onChange={e => setPayDate(e.target.value)}
+                    className="w-full bg-[#f8f9fa] border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none"
+                  />
                 </div>
+
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-450 mb-1.5">付款金额 (元) *</label>
-                  <input type="number" required value={payAmount} onChange={e => setPayAmount(Number(e.target.value))} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs font-black font-mono" />
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">付款金额 (¥)</label>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="输入记账实付金额额度"
+                    value={payAmount}
+                    onChange={e => setPayAmount(e.target.value)}
+                    className="w-full bg-[#f8f9fa] border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold font-mono focus:outline-none"
+                  />
                 </div>
+
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-450 mb-1.5">付款对公账户卡支 *</label>
-                  <select value={payAccount} onChange={e => setPayAccount(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-705">
-                    <option value="建设银行 (乐娜对公)">建设银行 (乐娜对合伙公卡)</option>
-                    <option value="泰隆网盾卡 (余英)">泰隆商业个人网盾 (出征用)</option>
-                    <option value="网商银行回款卡">支付宝/网商直扣资金</option>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">付款借记渠道账户</label>
+                  <select 
+                    value={payAccount}
+                    onChange={e => setPayAccount(e.target.value)}
+                    className="w-full bg-[#f8f9fa] border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none"
+                  >
+                    <option value="招商银行 (对公往来端 9120)">招商银行 (对公往来端 9120)</option>
+                    <option value="建设银行 (乐娜对公 8813)">建设银行 (乐娜对公 8813)</option>
+                    <option value="浦发银行 (出纳自持 6025)">浦发银行 (出纳自持 6025)</option>
                   </select>
                 </div>
-                <div className="pt-6 font-semibold flex gap-2">
-                  <button type="submit" className="flex-grow py-2.5 bg-[#006591] text-white text-xs font-bold rounded-lg cursor-pointer">登记存盘</button>
-                  <button type="button" onClick={() => setIsPayFormOpen(false)} className="py-2.5 px-4 border border-slate-200 text-slate-655 text-xs font-bold rounded-lg">取消</button>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">备注信息</label>
+                  <input 
+                    type="text"
+                    placeholder="网银转账流水号、单批抵用等说明"
+                    value={payRemark}
+                    onChange={e => setPayRemark(e.target.value)}
+                    className="w-full bg-[#f8f9fa] border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-2 text-xs font-bold border-t border-slate-100">
+                  <button 
+                    type="button"
+                    onClick={() => setShowPayModal(false)}
+                    className="px-4 py-2 hover:bg-slate-50 border border-slate-200 rounded-xl text-slate-500"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-4.5 py-2.2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-3xs cursor-pointer"
+                  >
+                    确认登记
+                  </button>
                 </div>
               </form>
-            </div>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Drawer Invoices Form */}
+      {/* B. Simulated Import Supplier Bill Modal */}
       <AnimatePresence>
-        {isInvoiceFormOpen && (
+        {showBillImportModal && (
           <>
-            <div onClick={() => setIsInvoiceFormOpen(false)} className="fixed inset-0 bg-black/30 backdrop-blur-xs z-[80]" />
-            <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl z-[90] flex flex-col border-l border-slate-205">
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <span className="text-xs font-black text-slate-800">📄 登记增值税进项发票</span>
-                <button onClick={() => setIsInvoiceFormOpen(false)} className="p-1 hover:bg-slate-100 rounded-full cursor-pointer text-slate-450"><X className="w-5 h-5" /></button>
+            <div onClick={() => { setShowBillImportModal(false); setUploadedFile(null); }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs z-[130]" />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="fixed top-28 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border border-slate-100 rounded-2xl shadow-2xl z-[140] p-6 text-slate-700"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4 select-none">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>导入供应商大货申报 Excel 账单</span>
+                </h3>
+                <button 
+                  onClick={() => { setShowBillImportModal(false); setUploadedFile(null); }}
+                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <form onSubmit={handleAddNewInvoice} className="flex-grow p-5 space-y-4 overflow-y-auto">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-455 mb-1.5">发票代码 / 号码 *</label>
-                  <input type="text" required value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} placeholder="No.4402198305" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs font-mono font-bold" />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-455 mb-1.5">开票代工厂商企业名称 *</label>
-                  <input type="text" required value={invoiceFactory} onChange={e => setInvoiceFactory(e.target.value)} placeholder="海安莱那织造有限公司" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-455 mb-1.5">发票税后总金额 *</label>
-                    <input type="number" required value={invoiceAmount} onChange={e => setInvoiceAmount(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs font-mono font-bold" />
+
+              <form onSubmit={triggerBillImportSim} className="space-y-4">
+                <div 
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+                    dragActive ? "border-sky-500 bg-sky-50/25" : "border-slate-200 hover:border-slate-350 bg-[#f8f9fd]/50"
+                  }`}
+                >
+                  <div className="flex flex-col items-center space-y-2 select-none">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    {uploadedFile ? (
+                      <div>
+                        <p className="text-xs font-bold text-slate-950">{uploadedFile.name}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">文件大小：{(uploadedFile.size / 1024).toFixed(1)} KB (随时准备解析)</p>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-450">
+                        <p className="font-bold text-slate-800">将供应商导出的 Excel 对账结算大表拖曳或点击此处上传</p>
+                        <p className="text-[10px] text-slate-400 mt-1">支持以 XLS, XLSX, CSV 载体结算模板大表</p>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-455 mb-1.5">发票增值税率 *</label>
-                    <select value={invoiceRate} onChange={e => setInvoiceRate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs font-bold text-slate-700">
-                      <option value="13%">13% - 制造工业专专</option>
-                      <option value="3% (小规模应税)">3% - 个体户简易征收</option>
-                      <option value="0%">0% - 小微免退抵税</option>
-                    </select>
-                  </div>
+                  <input 
+                    type="file" 
+                    onChange={e => e.target.files && setUploadedFile(e.target.files[0])}
+                    className="hidden" 
+                    id="excel-input-field" 
+                  />
+                  <label 
+                    htmlFor="excel-input-field"
+                    className="inline-block mt-4 px-3.5 py-1.8 border border-slate-250 bg-white hover:bg-slate-50 text-slate-650 rounded-lg cursor-pointer text-[10.5px] font-bold select-none shadow-3xs"
+                  >
+                    选择本地账单表格
+                  </label>
                 </div>
-                <div className="pt-6 font-semibold flex gap-2">
-                  <button type="submit" className="flex-grow py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-lg cursor-pointer animate-pulse">验证并存入</button>
-                  <button type="button" onClick={() => setIsInvoiceFormOpen(false)} className="py-2.5 px-4 border border-slate-200 text-slate-655 text-xs font-bold rounded-lg">取消</button>
+
+                <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-xl select-none">
+                  <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                  <p className="text-[10px] text-slate-450 leading-relaxed font-semibold">
+                    工作台智能解析说明：发载对触模块会自动识别大表中“供应商名称”、“款号单价”并自动拉取。
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-1 text-xs font-bold font-sans">
+                  <button 
+                    type="button"
+                    onClick={() => { setShowBillImportModal(false); setUploadedFile(null); }}
+                    className="px-4 py-2 hover:bg-slate-50 border border-slate-200 rounded-xl text-slate-500"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-4.5 py-2.2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-2xs cursor-pointer"
+                  >
+                    模拟一键解析
+                  </button>
                 </div>
               </form>
-            </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* C. Simulated Import Inbound Data Modal */}
+      <AnimatePresence>
+        {showInboundImportModal && (
+          <>
+            <div onClick={() => { setShowInboundImportModal(false); setUploadedFile(null); }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs z-[130]" />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="fixed top-28 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border border-slate-100 rounded-2xl shadow-2xl z-[140] p-6 text-slate-700"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4 select-none">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                  <RefreshCw className="w-4 h-4 text-blue-600" />
+                  <span>导入聚水潭/仓库采购入库及退货对账数据</span>
+                </h3>
+                <button 
+                  onClick={() => { setShowInboundImportModal(false); setUploadedFile(null); }}
+                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={triggerInboundImportSim} className="space-y-4">
+                <div 
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+                    dragActive ? "border-sky-500 bg-sky-50/25" : "border-slate-200 hover:border-slate-350 bg-[#f8f9fd]/50"
+                  }`}
+                >
+                  <div className="flex flex-col items-center space-y-2 select-none">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
+                      <RefreshCw className="w-5 h-5" />
+                    </div>
+                    {uploadedFile ? (
+                      <div>
+                        <p className="text-xs font-bold text-slate-950">{uploadedFile.name}</p>
+                        <p className="text-[10px] text-slate-450 mt-1">文件准备：{(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-450 mt-1">
+                        <p className="font-bold text-slate-800">将仓库出入退记录/聚水潭导出的标准接口包拖曳到这里</p>
+                        <p className="text-[10px] text-slate-400 mt-1">支持以 XLS, JSON, XML 格式导出数据归底</p>
+                      </div>
+                    )}
+                  </div>
+                  <input 
+                    type="file" 
+                    onChange={e => e.target.files && setUploadedFile(e.target.files[0])}
+                    className="hidden" 
+                    id="inbound-input-field" 
+                  />
+                  <label 
+                    htmlFor="inbound-input-field"
+                    className="inline-block mt-4 px-3.5 py-1.8 border border-slate-250 bg-white hover:bg-slate-50 text-slate-650 rounded-lg cursor-pointer text-[10.5px] font-bold select-none shadow-3xs"
+                  >
+                    选择仓库数据对碰
+                  </label>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-xl select-none">
+                  <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                  <p className="text-[10px] text-slate-450 leading-relaxed font-semibold">
+                    自动核销备注：系统将自动按采购单号/衣服款号/SKU进行双向折旧对碰差，不需要繁琐的多级审核。
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-1 text-xs font-bold font-sans">
+                  <button 
+                    type="button"
+                    onClick={() => { setShowInboundImportModal(false); setUploadedFile(null); }}
+                    className="px-4 py-2 hover:bg-slate-50 border border-slate-200 rounded-xl text-slate-500"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-4.5 py-2.2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-2xs cursor-pointer"
+                  >
+                    对碰聚水潭数据
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
