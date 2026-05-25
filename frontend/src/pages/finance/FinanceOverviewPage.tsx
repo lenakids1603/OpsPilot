@@ -40,10 +40,8 @@ interface AlertItem {
 export default function FinanceOverviewPage() {
   // Filters state
   const [timeRange, setTimeRange] = useState<"day" | "yesterday" | "month" | "lastMonth" | "custom">("month");
-  const [selectedEntity, setSelectedEntity] = useState("active");
-  const [selectedBank, setSelectedBank] = useState("all");
   const [selectedPlatform, setSelectedPlatform] = useState("all");
-  const [accountingStandard, setAccountingStandard] = useState("bank");
+  const [selectedShop, setSelectedShop] = useState("all");
 
   // Interaction Modals/Drawers
   const [isNewExpenseOpen, setIsNewExpenseOpen] = useState(false);
@@ -124,6 +122,150 @@ export default function FinanceOverviewPage() {
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
+  };
+
+  // Dynamic statistics engine based on filter selections
+  const getFilteredKpis = () => {
+    let baseInc = 3450000;
+    let baseExp = 2100000;
+    let baseInvAble = 2950000;
+    let baseInvEd = 2050000;
+    let basePaid = 1850050;
+    let subtextInc = "";
+    let subtextExp = "";
+    let statusLabelInc = "";
+    let statusLabelExp = "";
+
+    // Normalize input selections for descriptive text
+    const platformNames: Record<string, string> = { all: "全部平台", dy: "抖音", taobao: "淘宝/天猫", ks: "快手", pdd: "拼多多" };
+    const shopNames: Record<string, string> = {
+      all: "全部店铺",
+      "shop-dy1": "乐娜童装抖音店",
+      "shop-dy2": "安安婴儿服饰店",
+      "shop-tb1": "织锦服饰天猫店",
+      "shop-ks1": "乐娜快手直播店",
+      "shop-pdd1": "安安皮皮拼多多店"
+    };
+
+    if (timeRange === "day") {
+      baseInc = 128000;
+      baseExp = 98000;
+      baseInvAble = 110000;
+      baseInvEd = 82000;
+      basePaid = 91000;
+      subtextInc = "对比昨日 +¥14,200 | 今日净现金流 +¥30,000";
+      subtextExp = "今日预算执行 75% | 实时资金链稳定";
+      statusLabelInc = "今日流入";
+      statusLabelExp = "今日流出";
+    } else if (timeRange === "yesterday") {
+      baseInc = 113800;
+      baseExp = 85600;
+      baseInvAble = 98000;
+      baseInvEd = 71000;
+      basePaid = 78000;
+      subtextInc = "对比前日 +¥9,400 | 网银全渠道自动同步";
+      subtextExp = "预算执行率 68% | 包含货款、物流款";
+      statusLabelInc = "昨日流入";
+      statusLabelExp = "昨日流出";
+    } else if (timeRange === "lastMonth") {
+      baseInc = 3210000;
+      baseExp = 1980000;
+      baseInvAble = 2800000;
+      baseInvEd = 1950000;
+      basePaid = 1750000;
+      subtextInc = "上月同期实到 ¥3,188,540 | 已出合规发票";
+      subtextExp = "上月财务完整度 100% | 无异常差异挂账";
+      statusLabelInc = "上月累计流入";
+      statusLabelExp = "上月累计流出";
+    } else if (timeRange === "custom") {
+      baseInc = 5680000;
+      baseExp = 3420000;
+      baseInvAble = 4900000;
+      baseInvEd = 3100000;
+      basePaid = 3050000;
+      subtextInc = "自定义跨度(60天)数据归总 | 平均日流入 ¥94,666";
+      subtextExp = "整体流向健康 | 平均日支出 ¥57,000";
+      statusLabelInc = "选定周期总收入";
+      statusLabelExp = "选定周期总支出";
+    } else {
+      // "month"
+      baseInc = 3450000;
+      baseExp = 2100000;
+      baseInvAble = 2950000;
+      baseInvEd = 2050000;
+      basePaid = 1850050;
+      subtextInc = "对比上月同期 (+12.5%) | 本月预估净利润 ¥450,000";
+      subtextExp = "供应商货款 126万 | 待付供应商 ¥1,580,000";
+      statusLabelInc = "本月累计流入";
+      statusLabelExp = "本月累计流出";
+    }
+
+    // Dynamic Multipliers
+    let multiplier = 1.0;
+    if (selectedPlatform === "dy") {
+      multiplier *= 0.55;
+      if (selectedShop === "shop-dy1") multiplier *= 0.70;
+      else if (selectedShop === "shop-dy2") multiplier *= 0.30;
+    } else if (selectedPlatform === "taobao") {
+      multiplier *= 0.25;
+      if (selectedShop === "shop-tb1") multiplier *= 1.0;
+    } else if (selectedPlatform === "ks") {
+      multiplier *= 0.12;
+      if (selectedShop === "shop-ks1") multiplier *= 1.0;
+    } else if (selectedPlatform === "pdd") {
+      multiplier *= 0.08;
+      if (selectedShop === "shop-pdd1") multiplier *= 1.0;
+    } else {
+      // selectedPlatform === "all"
+      if (selectedShop === "shop-dy1") multiplier *= 0.38;
+      else if (selectedShop === "shop-dy2") multiplier *= 0.17;
+      else if (selectedShop === "shop-tb1") multiplier *= 0.25;
+      else if (selectedShop === "shop-ks1") multiplier *= 0.12;
+      else if (selectedShop === "shop-pdd1") multiplier *= 0.08;
+    }
+
+    // Output final rounded calculations
+    const finalIncome = Math.round(baseInc * multiplier);
+    const finalExpense = Math.round(baseExp * multiplier);
+    const finalInvAble = Math.round(baseInvAble * multiplier);
+    const finalInvEd = Math.round(baseInvEd * multiplier);
+    const finalPaid = Math.round(basePaid * multiplier);
+    const netCashflow = finalIncome - finalExpense;
+
+    // Detailed annotation explaining active filters
+    const filterDesc = `${platformNames[selectedPlatform]} • ${shopNames[selectedShop] || "所选店铺"}`;
+
+    return {
+      income: finalIncome,
+      expense: finalExpense,
+      net: netCashflow,
+      invoiceable: finalInvAble,
+      invoiced: finalInvEd,
+      paid: finalPaid,
+      subInc: subtextInc,
+      subExp: subtextExp,
+      titleInc: statusLabelInc,
+      titleExp: statusLabelExp,
+      desc: filterDesc
+    };
+  };
+
+  const kpis = getFilteredKpis();
+
+  // Custom Navigation Click Handler for KPI cards linking to Cashflow Page
+  const handleCardClick = (direction: "income" | "expense") => {
+    const event = new CustomEvent("finance-navigate", {
+      detail: {
+        parent: "财务系统",
+        sub: "公司资金流水",
+        direction,
+        timeRange,
+        platform: selectedPlatform,
+        shop: selectedShop
+      }
+    });
+    window.dispatchEvent(event);
+    showToast(`正在深度联动，极速穿透查看${direction === "income" ? "收入" : "支出"}对账明细...`);
   };
 
   // Add Expense form handler
@@ -277,49 +419,17 @@ export default function FinanceOverviewPage() {
 
         {/* Right Side: Select Dropdowns */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* 经营主体 */}
+          {/* 平台 */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase">经营主体:</span>
-            <select 
-              value={selectedEntity}
-              onChange={(e) => {
-                setSelectedEntity(e.target.value);
-                showToast(`已切换观察主体范围`);
-              }}
-              className="bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591]"
-            >
-              <option value="active">本月使用主体</option>
-              <option value="all">全部主体</option>
-              <option value="stopped">停用主体</option>
-            </select>
-          </div>
-
-          {/* 银行账户 */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase">银行账户:</span>
-            <select 
-              value={selectedBank}
-              onChange={(e) => {
-                setSelectedBank(e.target.value);
-                showToast(`已切换账户范围`);
-              }}
-              className="bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591]"
-            >
-              <option value="all">全部账户</option>
-              <option value="icbc">工商银行 (1102)</option>
-              <option value="cmb">招商银行 (8923)</option>
-              <option value="ccb">建设银行 (4403)</option>
-            </select>
-          </div>
-
-          {/* 平台渠道 */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase">平台渠道:</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase">平台:</span>
             <select 
               value={selectedPlatform}
               onChange={(e) => {
-                setSelectedPlatform(e.target.value);
-                showToast(`已切换平台数据流`);
+                const p = e.target.value;
+                setSelectedPlatform(p);
+                setSelectedShop("all"); // Reset shop selection to prevent inconsistency
+                const platformLabel = p === "all" ? "全部平台" : p === "dy" ? "抖音" : p === "taobao" ? "淘宝/天猫" : p === "ks" ? "快手" : "拼多多";
+                showToast(`已切换平台为：${platformLabel}`);
               }}
               className="bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591]"
             >
@@ -331,146 +441,237 @@ export default function FinanceOverviewPage() {
             </select>
           </div>
 
-          {/* 核算口径 */}
+          {/* 店铺 */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase">核算口径:</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase">店铺:</span>
             <select 
-              value={accountingStandard}
+              value={selectedShop}
               onChange={(e) => {
-                setAccountingStandard(e.target.value);
-                showToast(`核算基点变更为：${e.target.value === "bank" ? "银行流水" : "平台对账单"}`);
+                setSelectedShop(e.target.value);
+                showToast(`已切换观察店铺范围`);
               }}
               className="bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006591]"
             >
-              <option value="bank">银行流水</option>
-              <option value="platform">平台账单</option>
-              <option value="receivable">应收账单</option>
+              <option value="all">全部店铺</option>
+              {(selectedPlatform === "all" || selectedPlatform === "dy") && (
+                <>
+                  <option value="shop-dy1">乐娜童装抖音店</option>
+                  <option value="shop-dy2">安安婴儿服饰店</option>
+                </>
+              )}
+              {(selectedPlatform === "all" || selectedPlatform === "taobao") && (
+                <option value="shop-tb1">织锦服饰天猫店</option>
+              )}
+              {(selectedPlatform === "all" || selectedPlatform === "ks") && (
+                <option value="shop-ks1">乐娜快手直播店</option>
+              )}
+              {(selectedPlatform === "all" || selectedPlatform === "pdd") && (
+                <option value="shop-pdd1">安安皮皮拼多多店</option>
+              )}
             </select>
           </div>
         </div>
       </div>
 
-      {/* 2 * 4 Grid Summary KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Row 1, Card 1 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] hover:border-slate-250 transition-all">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider font-sans">
-            <span>可用现金总额</span>
-            <Wallet className="w-4.5 h-4.5 text-slate-400" />
-          </div>
-          <div className="my-1">
-            <h3 className="text-xl font-black font-mono text-slate-800">¥12,450,000</h3>
-          </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2 flex items-center justify-between">
-            <span>同步进度 28/32 账户</span>
-            <span className="text-sky-600 cursor-pointer hover:underline text-[9.5px]" onClick={() => showToast("正在重新探测全链路银行终端端口...")}>快速刷新</span>
-          </div>
-        </div>
+      {/* Dynamic 2-Card Summary KPI Panel */}
+      <div id="finance-kpi-drilldown-cards" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Income Card */}
+        <div 
+          onClick={() => handleCardClick("income")}
+          title="点击即可联动穿透至公司资金流水对账，深度分析明细"
+          className="group cursor-pointer hover:scale-[1.015] hover:border-emerald-300 hover:shadow-md active:scale-99 transition-all duration-300 bg-white border border-slate-100 rounded-2xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden select-none"
+        >
+          {/* Subtle hover background highlight */}
+          <div className="absolute inset-0 bg-emerald-50/0 group-hover:bg-emerald-50/5 transition-all duration-500 pointer-events-none" />
 
-        {/* Row 1, Card 2 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] hover:border-slate-250 transition-all">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
-            <span>今日总收入</span>
-            <span className="text-emerald-500 font-bold font-mono text-xs">+12.5%</span>
-          </div>
-          <div className="my-1">
-            <h3 className="text-xl font-black font-mono text-slate-800">¥128,000</h3>
-          </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2">
-            <span>对比昨日: <strong className="text-emerald-500 font-mono">+¥14,200</strong></span>
-          </div>
-        </div>
+          <div>
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
+              <span className="flex items-center gap-1.5 uppercase">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                {kpis.titleInc}
+              </span>
+              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-black">
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>+12.5%</span>
+              </div>
+            </div>
+            
+            <div className="mt-4">
+              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                核算总金额 (人民币)
+                <span className="text-[9.5px] text-emerald-600 font-medium group-hover:underline opacity-0 group-hover:opacity-100 transition-all duration-200 ml-1">
+                  点击下钻对账单 ↗
+                </span>
+              </span>
+              <h3 className="text-3xl font-black font-mono text-slate-800 tracking-tight mt-1 flex items-baseline gap-1">
+                <span>¥{kpis.income.toLocaleString()}</span>
+                <span className="text-[10px] text-emerald-500 font-bold hidden md:inline ml-1">进入流水账 ➔</span>
+              </h3>
+            </div>
 
-        {/* Row 1, Card 3 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] hover:border-slate-250 transition-all">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
-            <span>今日总支出</span>
-            <span className="text-slate-450 font-bold font-mono text-[9px]">75% 预算</span>
-          </div>
-          <div className="my-1 space-y-1">
-            <h3 className="text-xl font-black font-mono text-slate-800">¥98,000</h3>
-            <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-              <div className="h-full bg-rose-500 rounded-full" style={{ width: "75%" }} />
+            <div className="mt-3 text-slate-500 text-[11px] leading-relaxed">
+              {kpis.subInc}
             </div>
           </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2 flex items-center justify-between">
-            <span>季度支出限流内</span>
-            <span className="text-[9.5px] text-amber-500">警戒</span>
+
+          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-[10.5px] text-slate-400 font-bold">
+              <span>主体与渠道分布规划</span>
+              <span className="text-slate-600 font-mono text-[10px]">{kpis.desc}</span>
+            </div>
+            <div className="w-full bg-slate-50 border border-slate-100 h-2 rounded-full overflow-hidden flex">
+              <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: "65%" }} title="抖音/主力 65%" />
+              <div className="h-full bg-teal-400 transition-all duration-500" style={{ width: "20%" }} title="淘宝天猫 20%" />
+              <div className="h-full bg-sky-400 transition-all duration-500" style={{ width: "15%" }} title="其他全网渠道 15%" />
+            </div>
+            <div className="flex items-center justify-between mt-1 text-[9px] text-slate-400 font-medium font-mono">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                抖音 (65%)
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+                淘宝 (20%)
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                其他 (15%)
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Row 1, Card 4 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] bg-[#fbffff] hover:border-slate-250 transition-all">
-          <div className="flex items-center justify-between text-[11px] font-bold text-[#008ba3] tracking-wider">
-            <span>净现金流</span>
-            <TrendingUp className="w-4.5 h-4.5 text-[#00a3b8]" />
+        {/* Expense Card */}
+        <div 
+          onClick={() => handleCardClick("expense")}
+          title="点击即可联动穿透至公司资金流水对账，深度分析明细"
+          className="group cursor-pointer hover:scale-[1.015] hover:border-rose-300 hover:shadow-md active:scale-99 transition-all duration-300 bg-white border border-slate-100 rounded-2xl p-6 shadow-xs flex flex-col justify-between relative overflow-hidden select-none"
+        >
+          {/* Subtle hover background highlight */}
+          <div className="absolute inset-0 bg-rose-50/0 group-hover:bg-rose-50/5 transition-all duration-500 pointer-events-none" />
+
+          <div>
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
+              <span className="flex items-center gap-1.5 uppercase">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                {kpis.titleExp}
+              </span>
+              <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[10px] font-black">
+                <ArrowDownRight className="w-3.5 h-3.5 text-rose-500" />
+                <span>限流监控中</span>
+              </div>
+            </div>
+            
+            <div className="mt-4">
+              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                核算总金额 (人民币)
+                <span className="text-[9.5px] text-rose-600 font-medium group-hover:underline opacity-0 group-hover:opacity-100 transition-all duration-200 ml-1">
+                  点击下钻对账单 ↗
+                </span>
+              </span>
+              <h3 className="text-3xl font-black font-mono text-slate-800 tracking-tight mt-1 flex items-baseline gap-1">
+                <span>¥{kpis.expense.toLocaleString()}</span>
+                <span className="text-[10px] text-rose-500 font-bold hidden md:inline ml-1">进入流水账 ➔</span>
+              </h3>
+            </div>
+
+            <div className="mt-3 text-slate-500 text-[11px] leading-relaxed">
+              {kpis.subExp}
+            </div>
           </div>
-          <div className="my-1">
-            <h3 className="text-xl font-black font-mono text-[#00a3b8]">+¥30,000</h3>
-          </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2">
-            <span>今日净流入</span>
+
+          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-[10.5px] text-slate-400 font-bold">
+              <span>支出科目构成比 (货款 / 运营 / 快递)</span>
+              <span className="text-[#006591] font-mono text-[10px] font-black flex items-center gap-1">
+                净现流: {kpis.net >= 0 ? "+" : ""}¥{kpis.net.toLocaleString()}
+              </span>
+            </div>
+            <div className="w-full bg-slate-50 border border-slate-100 h-2 rounded-full overflow-hidden flex">
+              <div className="h-full bg-rose-500 transition-all duration-500" style={{ width: "60%" }} title="货款 60%" />
+              <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: "15%" }} title="工资人效 15%" />
+              <div className="h-full bg-indigo-400 transition-all duration-500" style={{ width: "25%" }} title="物流级其他 25%" />
+            </div>
+            <div className="flex items-center justify-between mt-1 text-[9px] text-slate-400 font-medium font-mono">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                货款 (60%)
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                工资 (15%)
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                物流/杂支 (25%)
+              </span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Row 2, Card 1 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] hover:border-slate-250 transition-all">
+      {/* 3 Secondary KPI Cards (可开票金额, 已开票金额, 已打款金额) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Card 1: 可开票金额 */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all duration-300">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
-            <span>本月累计收入</span>
+            <span className="flex items-center gap-1.5 uppercase">
+              <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+              可开票金额
+            </span>
             <FileText className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="my-1">
-            <h3 className="text-xl font-black font-mono text-slate-800">¥3,450,000</h3>
+          <div className="mt-3">
+            <span className="text-[10px] font-bold text-slate-400">待收票/待开票总额</span>
+            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5">
+              ¥{kpis.invoiceable.toLocaleString()}
+            </h4>
           </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2">
-            <span>上月同期: <strong className="font-mono text-slate-700">¥3,188,540</strong></span>
-          </div>
-        </div>
-
-        {/* Row 2, Card 2 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] hover:border-slate-250 transition-all">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
-            <span>本月总支出</span>
-            <div className="flex gap-1 text-[8px] font-black">
-              <span className="px-1 py-0.2 bg-slate-100 rounded-sm text-slate-550">货款 60%</span>
-              <span className="px-1 py-0.2 bg-slate-150 rounded-sm text-slate-550">工资 15%</span>
-            </div>
-          </div>
-          <div className="my-1">
-            <h3 className="text-xl font-black font-mono text-slate-800">¥2,100,000</h3>
-          </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2 flex items-center justify-between">
-            <span>已付厂商货款 126万</span>
-            <span className="text-[9.5px] text-[#006591] hover:underline cursor-pointer" onClick={() => setIsSupplierReconOpen(true)}>对账</span>
+          <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-[10.5px] text-slate-550 font-bold">
+            <span>当前月度可用指标</span>
+            <span className="text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded text-[9.5px]">额度宽松</span>
           </div>
         </div>
 
-        {/* Row 2, Card 3 */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] hover:border-slate-250 transition-all">
+        {/* Card 2: 已开票金额 */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all duration-300">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
-            <span>本月经营利润预估</span>
-            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded text-[9px] font-bold">13.1% 净利</span>
+            <span className="flex items-center gap-1.5 uppercase">
+              <span className="w-2 h-2 rounded-full bg-teal-400"></span>
+              已开票金额
+            </span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="my-1">
-            <h3 className="text-xl font-black font-mono text-slate-800">¥450,000</h3>
+          <div className="mt-3">
+            <span className="text-[10px] font-bold text-slate-400">开票审核已通过</span>
+            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5">
+              ¥{kpis.invoiced.toLocaleString()}
+            </h4>
           </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2">
-            <span>扣除全口径运营成本、投流费</span>
+          <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-[10.5px] text-slate-550 font-bold">
+            <span>税控直连开具成功率</span>
+            <span className="text-emerald-600 font-mono text-[10px] font-black">100.0%</span>
           </div>
         </div>
 
-        {/* Row 2, Card 4 */}
-        <div className="bg-[#fffefe] border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between h-[125px] hover:border-slate-250 transition-all">
+        {/* Card 3: 已打款金额 */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all duration-300">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 tracking-wider">
-            <span>供应商待付总额</span>
-            <span className="text-rose-500 font-mono text-[9.5px] font-semibold">超期: ¥20万</span>
+            <span className="flex items-center gap-1.5 uppercase">
+              <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
+              已打款金额
+            </span>
+            <Wallet className="w-4 h-4 text-indigo-400" />
           </div>
-          <div className="my-1">
-            <h3 className="text-xl font-black font-mono text-slate-800">¥1,580,000</h3>
+          <div className="mt-3">
+            <span className="text-[10px] font-bold text-slate-400">银行流水成功支付</span>
+            <h4 className="text-xl font-black font-mono text-slate-800 mt-0.5">
+              ¥{kpis.paid.toLocaleString()}
+            </h4>
           </div>
-          <div className="text-[10.5px] font-bold text-slate-500 border-t border-slate-50 pt-2 flex items-center justify-between">
-            <span>7日内到期: <strong className="font-mono text-slate-700">¥350,000</strong></span>
-            <span className="text-[#006591] text-[9.5px] hover:underline cursor-pointer" onClick={() => setIsSupplierReconOpen(true)}>对账</span>
+          <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-[10.5px] text-slate-550 font-bold">
+            <span>银企直连自动拨付</span>
+            <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[9.5px]">网银直开</span>
           </div>
         </div>
       </div>

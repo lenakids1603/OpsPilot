@@ -43,8 +43,39 @@ export default function DashboardLayout({ userEmail, onLogout }: DashboardLayout
         setApiMode(customEvent.detail);
       }
     };
+    
+    const handleFinanceNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        const { parent, sub, direction, timeRange, platform, shop } = customEvent.detail;
+        
+        // 1. Expand parent node in sidebar
+        setExpandedParents(prev => ({
+          ...prev,
+          [parent]: true
+        }));
+        
+        // 2. Select sub-page
+        setSelectedParent(parent);
+        setSelectedSub(sub);
+        
+        // 3. Save navigation parameters for destination page to pick up
+        localStorage.setItem("finance-link-params", JSON.stringify({
+          direction,
+          timeRange,
+          platform,
+          shop,
+          triggeredAt: Date.now()
+        }));
+      }
+    };
+
     window.addEventListener("api-mode-change", handleModeChange);
-    return () => window.removeEventListener("api-mode-change", handleModeChange);
+    window.addEventListener("finance-navigate", handleFinanceNavigate);
+    return () => {
+      window.removeEventListener("api-mode-change", handleModeChange);
+      window.removeEventListener("finance-navigate", handleFinanceNavigate);
+    };
   }, []);
 
   // Clock updating hook

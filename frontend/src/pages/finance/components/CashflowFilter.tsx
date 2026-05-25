@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, Filter, RefreshCw, Layers, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { FundAccount, CashflowCategory } from "@shared/types";
 
@@ -17,15 +17,18 @@ export interface FilterParams {
   status: string;
   hasAttachment: boolean | null;
   search: string;
+  platform?: string;
+  shop?: string;
 }
 
 interface CashflowFilterProps {
   accounts: FundAccount[];
   categories: CashflowCategory[];
   onSearch: (params: FilterParams) => void;
+  value?: FilterParams;
 }
 
-export default function CashflowFilter({ accounts, categories, onSearch }: CashflowFilterProps) {
+export default function CashflowFilter({ accounts, categories, onSearch, value }: CashflowFilterProps) {
   const initialParams: FilterParams = {
     startDate: "",
     endDate: "",
@@ -35,11 +38,20 @@ export default function CashflowFilter({ accounts, categories, onSearch }: Cashf
     counterparty: "",
     status: "",
     hasAttachment: null,
-    search: ""
+    search: "",
+    platform: "all",
+    shop: "all"
   };
 
   const [params, setParams] = useState<FilterParams>(initialParams);
   const [collapsed, setCollapsed] = useState(false);
+
+  // Sync internal state with incoming parent updates
+  useEffect(() => {
+    if (value) {
+      setParams(value);
+    }
+  }, [value]);
 
   const handleApply = () => {
     onSearch({ ...params });
