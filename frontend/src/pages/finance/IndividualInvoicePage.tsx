@@ -13,10 +13,73 @@ import { motion, AnimatePresence } from "motion/react";
 import { INITIAL_PROPRIETOR_DATA, ProprietorInvoiceItem } from "./components/proprietorData";
 
 export default function IndividualInvoicePage() {
-  // Core state for proprietors
-  const [data, setData] = useState<ProprietorInvoiceItem[]>(INITIAL_PROPRIETOR_DATA);
+  // Core state for proprietors mapping/normalizing with sub-item arrays
+  const [data, setData] = useState<ProprietorInvoiceItem[]>(() => {
+    return INITIAL_PROPRIETOR_DATA.map(item => {
+      // Extrapolate bank account info for primary card compatibility and displaying tail
+      const primaryBankAcc = item.bankAccounts?.[0] || { bankName: "未知银行", branchName: "支行", accountNo: "622202******0000", balance: 0, isPrimary: true };
+      const accountTail = primaryBankAcc.accountNo.slice(-4);
+      const bank = `${primaryBankAcc.bankName}${primaryBankAcc.branchName || ""}`;
+      const accountNo = primaryBankAcc.accountNo;
+
+      const supplierPayable = item.supplierInvoice?.payableAmount ?? (item.withdrawnAmount * 0.70);
+      const supplierInvoiced = item.supplierInvoice?.invoicedAmount ?? 0;
+      const supplierPending = item.supplierInvoice?.pendingAmount ?? (supplierPayable - supplierInvoiced);
+      
+      const operatorPayable = item.operatorInvoice?.payableAmount ?? (item.withdrawnAmount * 0.13);
+      const operatorInvoiced = item.operatorInvoice?.invoicedAmount ?? 0;
+      const operatorPending = item.operatorInvoice?.pendingAmount ?? (operatorPayable - operatorInvoiced);
+      const operatorPaid = item.operatorInvoice?.details?.[0]?.paidAmount ?? operatorPayable; // fallback to payable
+      
+      const adPayable = item.adInvoice?.payableAmount ?? (item.withdrawnAmount * 0.10);
+      const adInvoiced = item.adInvoice?.invoicedAmount ?? 0;
+      const adPending = item.adInvoice?.pendingAmount ?? (adPayable - adInvoiced);
+      const adPaid = item.adInvoice?.details?.reduce((acc, curr) => acc + curr.paidAmount, 0) ?? adPayable; // fallback to adPayable
+      
+      return {
+        ...item,
+        accountTail,
+        bank,
+        accountNo,
+        withdrawTotal: item.withdrawnAmount,
+        manufacturerPayable: supplierPayable,
+        manufacturerInvTotal: supplierInvoiced,
+        manufacturerInvGeneral: item.supplierInvoice?.details?.reduce((sum, d) => sum + (d.normalInvoiceAmount || 0), 0) ?? supplierInvoiced,
+        manufacturerInvSpecial: item.supplierInvoice?.details?.reduce((sum, d) => sum + (d.specialInvoiceAmount || 0), 0) ?? 0,
+        manufacturerInvReleased: 0,
+        manufacturerInvAvailable: supplierPending,
+        manufacturerStatus: supplierPending <= 10 ? (supplierPending < -10 ? "超额" : "已完成") : "可安排",
+        
+        hedePayable: operatorPayable,
+        hedePaid: operatorPaid,
+        hedeInvGeneral: item.operatorInvoice?.details?.reduce((sum, d) => sum + (d.normalInvoiceAmount || 0), 0) ?? operatorInvoiced,
+        hedeInvSpecial: item.operatorInvoice?.details?.reduce((sum, d) => sum + (d.specialInvoiceAmount || 0), 0) ?? 0,
+        hedeInvTotal: operatorInvoiced,
+        hedeDiffAmt: operatorPaid - operatorInvoiced,
+        hedeStatus: (operatorPaid - operatorInvoiced) <= 50 ? "已完成" : "待补票",
+        
+        qianchuanPayable: adPayable,
+        qianchuanPaidLihewei: item.adInvoice?.details?.find(d => d.platformName.includes("千川") || d.payeeName.includes("巨量"))?.paidAmount ?? adPaid,
+        qianchuanPaidKeyi: 0,
+        qianchuanPaidHuijian: 0,
+        qianchuanPaidYurong: 0,
+        qianchuanPaidTotal: adPaid,
+        qianchuanInvGeneral: item.adInvoice?.details?.reduce((sum, d) => sum + (d.normalInvoiceAmount || 0), 0) ?? adInvoiced,
+        qianchuanInvSpecial: item.adInvoice?.details?.reduce((sum, d) => sum + (d.specialInvoiceAmount || 0), 0) ?? 0,
+        qianchuanInvTotal: adInvoiced,
+        qianchuanDiffAmt: adPaid - adInvoiced,
+        qianchuanStatus: (adPaid - adInvoiced) <= 50 ? "已完成" : "待补票"
+      };
+    });
+  });
   const [selectedItem, setSelectedItem] = useState<ProprietorInvoiceItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // States for 4 granular modular modal windows
+  const [subjectDetailOpen, setSubjectDetailOpen] = useState(false);
+  const [supplierDetailOpen, setSupplierDetailOpen] = useState(false);
+  const [operatorDetailOpen, setOperatorDetailOpen] = useState(false);
+  const [adDetailOpen, setAdDetailOpen] = useState(false);
   
   // Custom toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -193,8 +256,25 @@ export default function IndividualInvoicePage() {
 
       return true;
     }).sort((a, b) => {
-      let valA: any = a[sortField as keyof ProprietorInvoiceItem] ?? 0;
-      let valB: any = b[sortField as keyof ProprietorInvoiceItem] ?? 0;
+      let valA: any;
+      let valB: any;
+      
+      if (sortField === "withdrawTotal") {
+        valA = a.withdrawTotal ?? 0;
+        valB = b.withdrawTotal ?? 0;
+      } else if (sortField === "supplierInvoice.payableAmount" || sortField === "manufacturerPayable") {
+        valA = a.supplierInvoice?.payableAmount ?? a.manufacturerPayable ?? 0;
+        valB = b.supplierInvoice?.payableAmount ?? b.manufacturerPayable ?? 0;
+      } else if (sortField === "operatorInvoice.payableAmount" || sortField === "hedePayable") {
+        valA = a.operatorInvoice?.payableAmount ?? a.hedePayable ?? 0;
+        valB = b.operatorInvoice?.payableAmount ?? b.hedePayable ?? 0;
+      } else if (sortField === "adInvoice.payableAmount" || sortField === "qianchuanPayable") {
+        valA = a.adInvoice?.payableAmount ?? a.qianchuanPayable ?? 0;
+        valB = b.adInvoice?.payableAmount ?? b.qianchuanPayable ?? 0;
+      } else {
+        valA = a[sortField as keyof ProprietorInvoiceItem] ?? 0;
+        valB = b[sortField as keyof ProprietorInvoiceItem] ?? 0;
+      }
 
       if (typeof valA === "string") {
         return sortDirection === "asc" 
@@ -272,6 +352,10 @@ export default function IndividualInvoicePage() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(num).replace("CNY", "¥");
+  };
+
+  const CASH_FORMATTER = {
+    format: (num: number) => formatRMB(num)
   };
 
   // Quick Action: Register Invoicing
@@ -438,7 +522,7 @@ export default function IndividualInvoicePage() {
         // Mock add a fresh entry
         const isExist = data.some(item => item.id === "PROP-NEW");
         if (!isExist) {
-          const newItem: ProprietorInvoiceItem = {
+          const newItem: any = {
             id: "PROP-NEW",
             shop: "莉娜kids SH",
             name: "杭州萧山优芽服装设计厂（新导入主体）",
@@ -1047,421 +1131,209 @@ export default function IndividualInvoicePage() {
 
         {/* Dynamic Table Body */}
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse min-w-[1200px]">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
             {/* Table Headers */}
-            <thead className="bg-[#f8fafc] border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 bg-opacity-95 backdrop-blur-xs z-10">
+            <thead className="bg-[#f8fafc] border-b border-slate-150 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 bg-opacity-95 backdrop-blur-xs z-10 font-sans">
               <tr>
-                {/* 1. 店铺, 2. 个体户主体, 3. 银行, 4. 账号尾号 (Always fixed first columns concept, handled elegantly via column borders) */}
-                <th className="p-3 pl-4 border-r border-slate-100 min-w-[110px]">店铺</th>
-                <th className="p-3 border-r border-slate-100 min-w-[200px]">个体户主体</th>
-                <th className="p-3 border-r border-slate-100 min-w-[140px]">开户银行</th>
-                <th className="p-3 border-r border-slate-100 text-center min-w-[80px]">尾号</th>
-
-                {/* Ten: 全部主体 Column Headers */}
-                {activeTab === "all" && (
-                  <>
-                    <th className="p-3 text-right cursor-pointer hover:bg-slate-100" onClick={() => handleSort("withdraw2025")}>
-                      <div className="flex items-center justify-end gap-1">2025提现 {sortField === "withdraw2025" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                    <th className="p-3 text-right cursor-pointer hover:bg-slate-100" onClick={() => handleSort("withdraw2026")}>
-                      <div className="flex items-center justify-end gap-1">2026提现 {sortField === "withdraw2026" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                    <th className="p-3 text-right font-black text-slate-700 cursor-pointer bg-slate-50 hover:bg-slate-100" onClick={() => handleSort("withdrawTotal")}>
-                      <div className="flex items-center justify-end gap-1">提现提合 {sortField === "withdrawTotal" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                    
-                    {/* 厂家开票 70% Summary */}
-                    <th className="p-3 text-right text-sky-700 font-bold border-l border-slate-100">厂家应票(70%)</th>
-                    <th className="p-3 text-right font-bold text-slate-750">厂家已开票</th>
-                    <th className="p-3 text-right font-bold text-sky-700 bg-sky-50/40">厂家可安排</th>
-
-                    {/* 赫得 13% Summary */}
-                    <th className="p-3 text-right text-emerald-700 font-bold border-l border-slate-100">赫得应票(13%)</th>
-                    <th className="p-3 text-right text-slate-755">赫得已打款</th>
-                    <th className="p-3 text-right text-slate-755">赫得已开</th>
-
-                    {/* 千川 10% Summary */}
-                    <th className="p-3 text-right text-indigo-700 font-bold border-l border-slate-100">千川应票(10%)</th>
-                    <th className="p-3 text-right text-slate-755">千川已打款</th>
-                    <th className="p-3 text-right text-slate-755 font-bold">千川已开</th>
-
-                    {/* Account Balance */}
-                    <th className="p-3 text-right border-l border-slate-100 bg-amber-50/20 text-indigo-950 font-bold">当前账户余额</th>
-                  </>
-                )}
-
-                {/* Eleven: 厂家开票 Column Headers */}
-                {activeTab === "manufacturer" && (
-                  <>
-                    <th className="p-3 text-right cursor-pointer hover:bg-slate-100" onClick={() => handleSort("withdrawTotal")}>
-                      <div className="flex items-center justify-end gap-1">提现金额合计 {sortField === "withdrawTotal" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                    <th className="p-3 text-center text-slate-400">厂家比例</th>
-                    <th className="p-3 text-right font-black text-slate-700 cursor-pointer hover:bg-slate-100" onClick={() => handleSort("manufacturerPayable")}>
-                      <div className="flex items-center justify-end gap-1">厂家应开票额 {sortField === "manufacturerPayable" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                    <th className="p-3 text-right">厂家普票</th>
-                    <th className="p-3 text-right">厂家专票</th>
-                    <th className="p-3 text-right font-black text-slate-750 bg-slate-50">厂家合计开票</th>
-                    <th className="p-3 text-center text-red-650 font-bold">已放出票额</th>
-                    <th className="p-3 text-right font-black text-sky-700 bg-sky-50 cursor-pointer hover:bg-sky-100" onClick={() => handleSort("manufacturerInvAvailable")}>
-                      <div className="flex items-center justify-end gap-1">还能安排票额 {sortField === "manufacturerInvAvailable" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                  </>
-                )}
-
-                {/* Twelve: 赫得服务费 Column Headers */}
-                {activeTab === "hede" && (
-                  <>
-                    <th className="p-3 text-right cursor-pointer hover:bg-slate-100" onClick={() => handleSort("withdrawTotal")}>
-                      <div className="flex items-center justify-end gap-1">提现金额合计 {sortField === "withdrawTotal" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                    <th className="p-3 text-center text-slate-400">服务费比例</th>
-                    <th className="p-3 text-right text-teal-800 font-bold" onClick={() => handleSort("hedePayable")}>赫得应开票额</th>
-                    <th className="p-3 text-right font-black text-slate-805" onClick={() => handleSort("hedePaid")}>个体户给赫得已打款</th>
-                    <th className="p-3 text-right">赫得普票</th>
-                    <th className="p-3 text-right">赫得专票</th>
-                    <th className="p-3 text-right font-black bg-slate-50">赫得合计开票</th>
-                    <th className="p-3 text-right font-black text-orange-700" onClick={() => handleSort("hedeDiffAmt")}>打款与开票差异</th>
-                  </>
-                )}
-
-                {/* Thirteen: 千川投流 Column Headers */}
-                {activeTab === "qianchuan" && (
-                  <>
-                    <th className="p-3 text-right cursor-pointer hover:bg-slate-100" onClick={() => handleSort("withdrawTotal")}>
-                      <div className="flex items-center justify-end gap-1">提现金额合计 {sortField === "withdrawTotal" && <ArrowUpDown className="w-2.5 h-2.5" />}</div>
-                    </th>
-                    <th className="p-3 text-center text-slate-400">千川比例</th>
-                    <th className="p-3 text-right text-indigo-700 font-bold">千川应开票额</th>
-                    <th className="p-3 text-right text-xs">莉禾唯打款</th>
-                    <th className="p-3 text-right text-xs">科衣打款</th>
-                    <th className="p-3 text-right text-xs">惠间打款</th>
-                    <th className="p-3 text-right text-xs">玉融打款</th>
-                    <th className="p-3 text-right font-black text-slate-800 bg-slate-50">千川已打合计</th>
-                    <th className="p-3 text-right">千川普票</th>
-                    <th className="p-3 text-right">千川专票</th>
-                    <th className="p-3 text-right font-black text-slate-800 bg-indigo-50/20">千川合计开票</th>
-                    <th className="p-3 text-right text-orange-650 font-bold">付款开票差异</th>
-                  </>
-                )}
-
-                {/* Fourteen: 异常复核 Column Headers */}
-                {activeTab === "anomalies" && (
-                  <>
-                    <th className="p-3 text-left min-w-[120px]">异常类型</th>
-                    <th className="p-3 text-right min-w-[130px]">关联出账金额</th>
-                    <th className="p-3 text-right min-w-[120px]">差异超额金额</th>
-                    <th className="p-3 text-left min-w-[200px]">异常详细说明说明</th>
-                    <th className="p-3 text-left min-w-[180px]">配合建议处理</th>
-                  </>
-                )}
-
-                {/* Fifteen: 每日余额 Column Headers */}
-                {activeTab === "balances" && (
-                  <>
-                    <th className="p-3 text-right font-black text-slate-800 bg-amber-50/30" onClick={() => handleSort("currentBalance")}>当前账户余额</th>
-                    <th className="p-3 text-center">对应余额日期</th>
-                  </>
-                )}
-
-                <th className="p-3 text-center min-w-[100px] border-l border-slate-100">状态</th>
-                <th className="p-3 text-center sticky right-0 bg-[#f8fafc] shadow-lg border-l border-slate-150 min-w-[130px]">操作</th>
+                <th className="p-3.5 pl-4 border-r border-slate-150 min-w-[300px]">店铺及对公主体</th>
+                <th className="p-3.5 border-r border-slate-150 text-right min-w-[160px] cursor-pointer hover:bg-slate-100" onClick={() => handleSort("withdrawTotal")}>
+                  <div className="flex items-center justify-end gap-1">
+                    累计提现金额
+                    {sortField === "withdrawTotal" && <ArrowUpDown className="w-2.5 h-2.5 text-slate-450" />}
+                  </div>
+                </th>
+                <th className="p-3.5 border-r border-slate-150 text-right min-w-[200px] cursor-pointer hover:bg-slate-100" onClick={() => handleSort("manufacturerPayable")}>
+                  <div className="flex items-center justify-end gap-1 text-sky-850">
+                    供应商应开货款 (70.0%)
+                    {sortField === "manufacturerPayable" && <ArrowUpDown className="w-2.5 h-2.5 text-sky-555" />}
+                  </div>
+                </th>
+                <th className="p-3.5 border-r border-slate-150 text-right min-w-[200px] cursor-pointer hover:bg-slate-100" onClick={() => handleSort("hedePayable")}>
+                  <div className="flex items-center justify-end gap-1 text-emerald-850">
+                    运营应开服务费 (13.0%)
+                    {sortField === "hedePayable" && <ArrowUpDown className="w-2.5 h-2.5 text-emerald-555" />}
+                  </div>
+                </th>
+                <th className="p-3.5 text-right min-w-[200px] cursor-pointer hover:bg-slate-100" onClick={() => handleSort("qianchuanPayable")}>
+                  <div className="flex items-center justify-end gap-1 text-indigo-850">
+                    广告费/投流应开 (10.0%)
+                    {sortField === "qianchuanPayable" && <ArrowUpDown className="w-2.5 h-2.5 text-indigo-555" />}
+                  </div>
+                </th>
               </tr>
             </thead>
 
             {/* Table Body Rows */}
-            <tbody className="text-xs text-slate-700 divide-y divide-slate-100 font-mono">
+            <tbody className="text-xs text-slate-700 divide-y divide-slate-150 font-normal font-sans">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={24} className="p-8 text-center text-slate-400 font-sans">
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-4">
-                      <AlertCircle className="w-6 h-6 text-slate-300" />
-                      <p className="font-bold">未找到满足过滤条件的个体户主体记录</p>
-                      <p className="text-[10.5px] text-slate-400">请清除部分筛选条件或导入汇总表重试</p>
+                  <td colSpan={5} className="p-12 text-center text-slate-400 font-sans">
+                    <div className="flex flex-col items-center justify-center gap-2 py-6">
+                      <AlertCircle className="w-8 h-8 text-slate-300" />
+                      <p className="font-bold text-slate-600 text-sm">未找到满足过滤条件的个体户主体记录</p>
+                      <p className="text-[11px] text-slate-400">请清除部分筛选条件或在上方搜索栏重试</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 filteredData.map((item) => {
-                  // Determine is closer to 5 Million limit 
-                  const nearLimit = item.withdrawTotal >= 4800000;
-                  
-                  // In Anomaly Tab we determine custom strings
-                  let anomalyType = "无";
-                  let anomalyColor = "text-slate-500 bg-slate-100";
-                  let linkAmt = item.withdrawTotal;
-                  let diffAmtVal = 0;
-                  let anomalyDesc = "正常主体";
-                  let recommendFix = "维持日常核查监控";
+                  const isNearLimit = item.withdrawTotal >= 4800000;
+                  const shopName = item.shopName || "未知店铺";
+                  const propName = item.proprietorName || "未知主体";
+                  const bank = item.bankName || "未指定银行";
+                  const last4Digits = item.bankAccount ? item.bankAccount.slice(-4) : "无";
 
-                  if (item.manufacturerStatus === "超额") {
-                    anomalyType = "超额开票";
-                    anomalyColor = "text-red-700 bg-red-50 border border-red-100";
-                    linkAmt = item.manufacturerPayable;
-                    diffAmtVal = Math.abs(item.manufacturerInvAvailable);
-                    anomalyDesc = "可安排票额为负数，实际开票金额已超越设定的 70.0% 比例理论红线！";
-                    recommendFix = "由于超额已成事实，建议暂停该主体的后续厂家高派发额，由其他完备主体平账";
-                  } else if (item.hedeStatus === "待补票" || item.qianchuanStatus === "待补票") {
-                    anomalyType = "待补票务";
-                    anomalyColor = "text-orange-700 bg-orange-50 border border-orange-100";
-                    linkAmt = item.hedePaid + item.qianchuanPaidTotal;
-                    diffAmtVal = Math.max(item.hedeDiffAmt, item.qianchuanDiffAmt);
-                    anomalyDesc = "银行流水出账已打款，但相关服务商/投流主体尚未足额反开底根普专发票。";
-                    recommendFix = "联系赫得财务(胡主管)或莉禾唯跟进人，要求在3个工作日内补开齐相应发票";
-                  } else if (nearLimit) {
-                    anomalyType = "逼近500万";
-                    anomalyColor = "text-purple-700 bg-purple-50 border border-purple-100";
-                    linkAmt = item.withdrawTotal;
-                    diffAmtVal = 5000000 - item.withdrawTotal;
-                    anomalyDesc = `累计提现已突破 ${formatRMB(item.withdrawTotal)}，随时触发个体税案合规及转一般纳税人风控。`;
-                    recommendFix = "停止继续代购新收银，新对公归流请无缝切换走备底新个体户商行";
-                  } else if (item.status === "已注销") {
-                    anomalyType = "主体已注销";
-                    anomalyColor = "text-slate-700 bg-slate-100 border border-slate-200";
-                    linkAmt = item.withdrawTotal;
-                    diffAmtVal = 0;
-                    anomalyDesc = "该个体工商户主体已在工商局执行完销户清算，无法发生后续票额流动。";
-                    recommendFix = "财务系统标识归档，不再接收对其的打款及额度分配";
-                  }
+                  // Extract values
+                  const withdrawTotal = item.withdrawTotal || 0;
+                  
+                  const supplierPayable = item.supplierInvoice?.payableAmount || (withdrawTotal * 0.70);
+                  const supplierInvoiced = item.supplierInvoice?.invoicedAmount || 0;
+                  const supplierRemaining = Math.max(0, supplierPayable - supplierInvoiced);
+
+                  const operatorPayable = item.operatorInvoice?.payableAmount || (withdrawTotal * 0.13);
+                  const operatorInvoiced = item.operatorInvoice?.invoicedAmount || 0;
+                  const operatorRemaining = Math.max(0, operatorPayable - operatorInvoiced);
+
+                  const adPayable = item.adInvoice?.payableAmount || (withdrawTotal * 0.10);
+                  const adInvoiced = item.adInvoice?.invoicedAmount || 0;
+                  const adRemaining = Math.max(0, adPayable - adInvoiced);
 
                   return (
-                    <tr 
-                      key={item.id} 
-                      className={`hover:bg-slate-50/80 transition-colors group ${
-                        nearLimit ? "bg-amber-50/20" : ""
-                      }`}
-                    >
-                      {/* 1. 店铺 */}
-                      <td className="p-3 pl-4 border-r border-slate-50 font-sans font-bold text-slate-800">
-                        {item.shop}
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors duration-150 group">
+                      {/* 1. 店铺及对公主体 */}
+                      <td 
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setFormProprietorId(item.id);
+                          setSubjectDetailOpen(true);
+                        }}
+                        className="p-3.5 pl-4 border-r border-slate-100 min-w-[300px] cursor-pointer group-hover:bg-slate-50/20"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="bg-slate-100 group-hover:bg-indigo-50/70 p-1.5 rounded-lg border border-slate-150 transition-all text-slate-500 group-hover:text-indigo-600 font-bold shrink-0 text-xs text-center w-7 h-7 flex items-center justify-center">
+                            {shopName.charAt(0)}
+                          </div>
+                          <div className="flex flex-col gap-0.5 max-w-[240px]">
+                            <span className="font-bold text-slate-800 text-[12.5px] hover:text-indigo-600 transition-colors leading-tight decoration-dashed hover:underline underline-offset-3">
+                              {shopName}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-medium truncate">
+                              {propName}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono tracking-wide">
+                              {bank} · {last4Digits}
+                            </span>
+                          </div>
+                        </div>
                       </td>
-                      
-                      {/* 2. 主体姓名及警示标志 */}
-                      <td className="p-3 border-r border-slate-50 font-sans font-medium text-slate-700">
-                        <div className="space-y-0.5">
-                          <button 
-                            onClick={() => openDetail(item)}
-                            className="text-left font-bold text-slate-800 hover:text-sky-600 hover:underline transition-colors block text-xs"
-                          >
-                            {item.name}
-                          </button>
-                          {nearLimit && (
-                            <div className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded">
-                              <AlertTriangle className="w-3 h-3 text-amber-600 animate-bounce" />
-                              逼近500W: 剩余限额 {formatRMB(5000000 - item.withdrawTotal)}
-                            </div>
-                          )}
-                          {item.remarks && (
-                            <div className="text-[9.5px] text-slate-400 font-normal truncate max-w-[240px]" title={item.remarks}>
-                              {item.remarks}
-                            </div>
+
+                      {/* 2. 累计提现金额 */}
+                      <td className="p-3.5 border-r border-slate-100 text-right min-w-[160px]">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-bold text-slate-800 font-mono text-[12.5px]">
+                            {CASH_FORMATTER.format(withdrawTotal)}
+                          </span>
+                          {isNearLimit ? (
+                            <span className="bg-rose-50 text-rose-650 text-[9.5px] px-1.5 py-0.5 rounded-md font-bold border border-rose-100 animate-pulse">
+                              接近500万限制
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              额度充足
+                            </span>
                           )}
                         </div>
                       </td>
 
-                      {/* 3. 银行 */}
-                      <td className="p-3 border-r border-slate-50 font-sans text-slate-500">
-                        <span className="text-[11px] block leading-tight">{item.bank.split("杭州")[0]}</span>
-                        <span className="text-[9.5px] text-slate-400 block tracking-tight">{item.bank.split("杭州")[1] || "分行支行"}</span>
-                      </td>
-
-                      {/* 4. 银行尾号 */}
-                      <td className="p-3 border-r border-slate-50 text-center font-bold text-slate-650 bg-slate-50/30">
-                        <span className="bg-slate-100 text-slate-700 p-1 px-1.5 rounded text-[10.5px]">
-                          {item.accountTail}
-                        </span>
-                      </td>
-
-                      {/* TAB: 全部主体 */}
-                      {activeTab === "all" && (
-                        <>
-                          <td className="p-3 text-right text-slate-500">{formatRMB(item.withdraw2025)}</td>
-                          <td className="p-3 text-right text-slate-500">{formatRMB(item.withdraw2026)}</td>
-                          <td className="p-3 text-right font-black text-slate-850 bg-slate-50/40">
-                            {formatRMB(item.withdrawTotal)}
-                          </td>
-                          
-                          {/* 厂家 70% */}
-                          <td className="p-3 text-right text-sky-800 font-semibold border-l border-slate-50">{formatRMB(item.manufacturerPayable)}</td>
-                          <td className="p-3 text-right text-slate-600">{formatRMB(item.manufacturerInvTotal)}</td>
-                          <td className={`p-3 text-right font-black bg-sky-50/20 ${item.manufacturerInvAvailable < 0 ? "text-red-650" : "text-sky-700"}`}>
-                            {formatRMB(item.manufacturerInvAvailable)}
-                          </td>
-
-                          {/* 赫得 13% */}
-                          <td className="p-3 text-right text-emerald-800 font-semibold border-l border-slate-50">{formatRMB(item.hedePayable)}</td>
-                          <td className="p-3 text-right text-slate-550">{formatRMB(item.hedePaid)}</td>
-                          <td className="p-3 text-right text-slate-550">{formatRMB(item.hedeInvTotal)}</td>
-
-                          {/* 千川 10% */}
-                          <td className="p-3 text-right text-indigo-800 font-semibold border-l border-slate-50">{formatRMB(item.qianchuanPayable)}</td>
-                          <td className="p-3 text-right text-slate-500">{formatRMB(item.qianchuanPaidTotal)}</td>
-                          <td className="p-3 text-right text-slate-600 font-bold">{formatRMB(item.qianchuanInvTotal)}</td>
-
-                          {/* Account Balance */}
-                          <td className="p-3 text-right border-l border-slate-50 bg-indigo-50/5 font-bold text-slate-750">
-                            {formatRMB(item.currentBalance)}
-                          </td>
-                        </>
-                      )}
-
-                      {/* TAB: 厂家开票 view */}
-                      {activeTab === "manufacturer" && (
-                        <>
-                          <td className="p-3 text-right font-bold text-slate-600">{formatRMB(item.withdrawTotal)}</td>
-                          <td className="p-3 text-center text-[10.5px] text-slate-400 font-bold">70.0%</td>
-                          <td className="p-3 text-right font-black text-slate-700">{formatRMB(item.manufacturerPayable)}</td>
-                          <td className="p-3 text-right text-slate-500">{formatRMB(item.manufacturerInvGeneral)}</td>
-                          <td className="p-3 text-right text-slate-500">{formatRMB(item.manufacturerInvSpecial)}</td>
-                          <td className="p-3 text-right font-black text-slate-800 bg-slate-50/50">{formatRMB(item.manufacturerInvTotal)}</td>
-                          <td className="p-3 text-center">
-                            {item.manufacturerInvReleased > 0 ? (
-                              <span className="text-red-650 bg-red-50 px-1.5 py-0.5 rounded font-black text-[9.5px]">
-                                {formatRMB(item.manufacturerInvReleased)}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-                          <td className={`p-3 text-right font-black bg-sky-50 text-xs ${
-                            item.manufacturerInvAvailable < 0 ? "text-red-500" : "text-sky-700"
-                          }`}>
-                            {formatRMB(item.manufacturerInvAvailable)}
-                          </td>
-                        </>
-                      )}
-
-                      {/* TAB: 赫得服务费 view */}
-                      {activeTab === "hede" && (
-                        <>
-                          <td className="p-3 text-right font-bold text-slate-600">{formatRMB(item.withdrawTotal)}</td>
-                          <td className="p-3 text-center text-[10.5px] text-slate-400">13.0%</td>
-                          <td className="p-3 text-right font-bold text-teal-800">{formatRMB(item.hedePayable)}</td>
-                          <td className="p-3 text-right font-black text-slate-750">{formatRMB(item.hedePaid)}</td>
-                          <td className="p-3 text-right text-slate-500">{formatRMB(item.hedeInvGeneral)}</td>
-                          <td className="p-3 text-right text-slate-500">{formatRMB(item.hedeInvSpecial)}</td>
-                          <td className="p-3 text-right font-black text-slate-800 bg-slate-50/50">{formatRMB(item.hedeInvTotal)}</td>
-                          <td className={`p-3 text-right font-black text-xs ${
-                            item.hedeDiffAmt > 50 
-                              ? "text-orange-655 bg-orange-50/50" 
-                              : item.hedeDiffAmt < -50 
-                              ? "text-red-600" 
-                              : "text-emerald-700 bg-emerald-50/30"
-                          }`}>
-                            {item.hedeDiffAmt > 0 ? "+" : ""}{formatRMB(item.hedeDiffAmt)}
-                          </td>
-                        </>
-                      )}
-
-                      {/* TAB: 千川投流 view */}
-                      {activeTab === "qianchuan" && (
-                        <>
-                          <td className="p-3 text-right font-bold text-slate-600">{formatRMB(item.withdrawTotal)}</td>
-                          <td className="p-3 text-center text-slate-400">10.0%</td>
-                          <td className="p-3 text-right font-bold text-indigo-750">{formatRMB(item.qianchuanPayable)}</td>
-                          <td className="p-3 text-right text-slate-500 truncate max-w-[80px]">{formatRMB(item.qianchuanPaidLihewei)}</td>
-                          <td className="p-3 text-right text-slate-500 truncate max-w-[80px]">{formatRMB(item.qianchuanPaidKeyi)}</td>
-                          <td className="p-3 text-right text-slate-500 truncate max-w-[80px]">{formatRMB(item.qianchuanPaidHuijian)}</td>
-                          <td className="p-3 text-right text-slate-500 truncate max-w-[80px]">{formatRMB(item.qianchuanPaidYurong)}</td>
-                          <td className="p-3 text-right font-black text-slate-800 bg-slate-50/50">{formatRMB(item.qianchuanPaidTotal)}</td>
-                          <td className="p-3 text-right text-slate-450">{formatRMB(item.qianchuanInvGeneral)}</td>
-                          <td className="p-3 text-right text-slate-450">{formatRMB(item.qianchuanInvSpecial)}</td>
-                          <td className="p-3 text-right font-black text-[#1e1b4b] bg-indigo-50/20">{formatRMB(item.qianchuanInvTotal)}</td>
-                          <td className={`p-3 text-right font-black text-xs ${
-                            item.qianchuanDiffAmt > 50 
-                              ? "text-orange-600 bg-orange-50/30" 
-                              : item.qianchuanDiffAmt < -50 
-                              ? "text-red-500" 
-                              : "text-emerald-700 bg-emerald-50/30"
-                          }`}>
-                            {item.qianchuanDiffAmt > 0 ? "+" : ""}{formatRMB(item.qianchuanDiffAmt)}
-                          </td>
-                        </>
-                      )}
-
-                      {/* TAB: 异常复核 view */}
-                      {activeTab === "anomalies" && (
-                        <>
-                          <td className="p-3 border-r border-slate-50">
-                            <span className={`p-1 px-2 rounded-md font-bold text-[9px] ${anomalyColor}`}>
-                              {anomalyType}
+                      {/* 3. 供应商应开货款 */}
+                      <td 
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setFormProprietorId(item.id);
+                          setSupplierDetailOpen(true);
+                        }}
+                        className="p-3.5 border-r border-slate-100 text-right min-w-[200px] cursor-pointer hover:bg-sky-50/25 group-hover:bg-opacity-40"
+                      >
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-bold text-sky-850 font-mono text-[12.5px] border-b border-dashed border-sky-200 hover:border-sky-500 pb-0.5">
+                            {CASH_FORMATTER.format(supplierPayable)}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[10.5px]">
+                            <span className="text-slate-400">已开:</span>
+                            <span className="font-bold text-slate-705 font-mono">
+                              {CASH_FORMATTER.format(supplierInvoiced)}
                             </span>
-                          </td>
-                          <td className="p-3 text-right text-slate-600 font-bold">{formatRMB(linkAmt)}</td>
-                          <td className="p-3 text-right font-black text-red-600">{diffAmtVal > 0 ? formatRMB(diffAmtVal) : "-"}</td>
-                          <td className="p-3 font-sans text-[11px] text-slate-550 max-w-[250px] leading-snug">
-                            {anomalyDesc}
-                          </td>
-                          <td className="p-3 font-sans text-[11.5px] text-sky-850 font-medium">
-                            {recommendFix}
-                          </td>
-                        </>
-                      )}
-
-                      {/* TAB: 每日余额 view */}
-                      {activeTab === "balances" && (
-                        <>
-                          <td className="p-3 text-right font-black text-slate-850 bg-amber-50/15">{formatRMB(item.currentBalance)}</td>
-                          <td className="p-3 text-center text-slate-450 font-sans">{item.balanceDate}</td>
-                        </>
-                      )}
-
-                      {/* 状态 Column */}
-                      <td className="p-3 text-center border-l border-slate-50">
-                        {item.status === "正常" && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-750 border border-emerald-100">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                            正常
-                          </span>
-                        )}
-                        {item.status === "已注销" && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                            <span className="w-1 h-1 rounded-full bg-slate-400" />
-                            已注销
-                          </span>
-                        )}
-                        {item.status === "停止使用" && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-orange-50 text-orange-700 border border-orange-100">
-                            <span className="w-1 h-1 rounded-full bg-orange-500" />
-                            停止使用
-                          </span>
-                        )}
+                          </div>
+                          {supplierRemaining > 0 ? (
+                            <span className="bg-amber-50 text-amber-700 text-[9px] px-1 rounded-sm font-semibold border border-amber-100 mt-0.5">
+                              缺票 {CASH_FORMATTER.format(supplierRemaining)}
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1 rounded-sm font-semibold border border-emerald-100 mt-0.5">
+                              已开齐
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      {/* 操作 Column - Fixed right for responsive tracking */}
-                      <td className="p-3 text-center sticky right-0 bg-white group-hover:bg-slate-50 border-l border-slate-150 shadow-xs">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => openDetail(item)}
-                            className="text-[10px] text-sky-600 border border-sky-100 p-1 px-2 rounded-md font-bold hover:bg-sky-50 transition-colors flex items-center gap-0.5"
-                            title="查看完整明细"
-                          >
-                            <Eye className="w-3 h-3" />
-                            详情
-                          </button>
-                          
-                          {item.status === "正常" && (
-                            <>
-                              <button
-                                onClick={() => {
-                                  setFormProprietorId(item.id);
-                                  setShowInvoicingModal(true);
-                                }}
-                                className="text-[10.5px] text-slate-700 hover:text-indigo-600 font-medium hover:underline p-1"
-                              >
-                                开票
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setFormPayProprietorId(item.id);
-                                  setShowPaymentModal(true);
-                                }}
-                                className="text-[10.5px] text-slate-705 hover:text-emerald-600 font-medium hover:underline p-1"
-                              >
-                                打款
-                              </button>
-                            </>
+                      {/* 4. 运营应开服务费 */}
+                      <td 
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setFormProprietorId(item.id);
+                          setOperatorDetailOpen(true);
+                        }}
+                        className="p-3.5 border-r border-slate-100 text-right min-w-[200px] cursor-pointer hover:bg-emerald-50/25 group-hover:bg-opacity-40"
+                      >
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-bold text-emerald-850 font-mono text-[12.5px] border-b border-dashed border-emerald-200 hover:border-emerald-500 pb-0.5">
+                            {CASH_FORMATTER.format(operatorPayable)}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[10.5px]">
+                            <span className="text-slate-400">已开:</span>
+                            <span className="font-bold text-slate-705 font-mono">
+                              {CASH_FORMATTER.format(operatorInvoiced)}
+                            </span>
+                          </div>
+                          {operatorRemaining > 0 ? (
+                            <span className="bg-amber-50 text-amber-700 text-[9px] px-1 rounded-sm font-semibold border border-amber-100 mt-0.5">
+                              缺票 {CASH_FORMATTER.format(operatorRemaining)}
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1 rounded-sm font-semibold border border-emerald-100 mt-0.5">
+                              已开齐
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 5. 广告费/投流应开 */}
+                      <td 
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setFormProprietorId(item.id);
+                          setAdDetailOpen(true);
+                        }}
+                        className="p-3.5 text-right min-w-[200px] cursor-pointer hover:bg-indigo-50/25 group-hover:bg-opacity-40"
+                      >
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-bold text-indigo-850 font-mono text-[12.5px] border-b border-dashed border-indigo-200 hover:border-indigo-500 pb-0.5">
+                            {CASH_FORMATTER.format(adPayable)}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[10.5px]">
+                            <span className="text-slate-400">已开:</span>
+                            <span className="font-bold text-slate-705 font-mono">
+                              {CASH_FORMATTER.format(adInvoiced)}
+                            </span>
+                          </div>
+                          {adRemaining > 0 ? (
+                            <span className="bg-amber-50 text-amber-700 text-[9px] px-1 rounded-sm font-semibold border border-amber-100 mt-0.5">
+                              缺票 {CASH_FORMATTER.format(adRemaining)}
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1 rounded-sm font-semibold border border-emerald-100 mt-0.5">
+                              已开齐
+                            </span>
                           )}
                         </div>
                       </td>
@@ -1470,6 +1342,8 @@ export default function IndividualInvoicePage() {
                 })
               )}
             </tbody>
+
+
           </table>
         </div>
       </div>
@@ -2073,6 +1947,519 @@ export default function IndividualInvoicePage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal 1: Shop & Entity Details */}
+      <AnimatePresence>
+        {subjectDetailOpen && selectedItem && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[110] p-4 text-xs font-sans">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden border border-slate-150">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 text-indigo-700 p-2 rounded-xl border border-indigo-200">
+                    <Building className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800">对公主体与店铺详情</h3>
+                    <p className="text-[10.5px] text-slate-400 mt-0.5">查看个体工商户的基础对公账号与所属分店信息</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSubjectDetailOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 outline-none p-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-all font-sans"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-5">
+                {/* Section 1: Basic Info */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                    主体信息
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                    <div className="space-y-0.5">
+                      <span className="text-slate-400">店铺名称:</span>
+                      <p className="font-bold text-slate-800 text-[12.5px]">{selectedItem.shop}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-slate-400">主体姓名 / 公司名称:</span>
+                      <p className="font-bold text-slate-800 leading-tight">{selectedItem.name}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-slate-400">经办负责人:</span>
+                      <p className="font-bold text-slate-700">{selectedItem.owner || "财务一姐"}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-slate-400">覆盖渠道标签:</span>
+                      <div className="flex gap-1 mt-0.5 flex-wrap">
+                        {selectedItem.platforms?.map((plat, idx) => (
+                          <span key={idx} className="bg-slate-100 text-slate-650 px-1.5 py-0.5 rounded text-[9px] font-bold border border-slate-200 font-sans">
+                            {plat}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Account Details */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                    绑定的对公网银账号
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedItem.bankAccounts?.map((acc, idx) => (
+                      <div key={idx} className={`p-4 rounded-xl border flex items-center justify-between ${acc.isPrimary ? 'bg-indigo-50/20 border-indigo-150' : 'bg-slate-50/20 border-slate-100'}`}>
+                        <div className="space-y-1">
+                          <p className="font-bold text-slate-800 text-[12px] flex items-center gap-1.5 font-sans">
+                            {acc.bankName} 
+                            {acc.isPrimary && (
+                              <span className="bg-indigo-100 text-indigo-700 text-[8.5px] px-1.5 py-0.2 rounded font-black border border-indigo-200 uppercase font-sans">
+                                默认主卡
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium font-sans">{acc.branchName}</p>
+                          <p className="text-[11.5px] font-mono text-slate-600 font-bold tracking-wide mt-1">{acc.accountNo}</p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <span className="text-[10px] text-slate-400 font-sans">物理账面余额:</span>
+                          <p className="font-bold text-slate-800 font-mono text-[13px]">{CASH_FORMATTER.format(acc.balance)}</p>
+                          <span className="text-[9px] text-slate-400 block font-mono">截至日期: {selectedItem.balanceDate}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50">
+                <button
+                  onClick={() => setSubjectDetailOpen(false)}
+                  className="bg-indigo-600 hover:bg-indigo-700 font-bold text-white px-5 py-2 rounded-xl transition-all font-sans"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal 2: Supplier Invoice Details */}
+      <AnimatePresence>
+        {supplierDetailOpen && selectedItem && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[110] p-4 text-xs font-sans">
+            <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden border border-slate-150">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-sky-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-sky-100 text-sky-700 p-2 rounded-xl border border-sky-200">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800">供应商货款发票详情</h3>
+                    <p className="text-[10.5px] text-slate-400 mt-0.5">厂家票务核对台：应开指标以 70% 比例理论额为安全对流计算尺度</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSupplierDetailOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 outline-none p-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-all font-sans"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                {/* 1. Statistics Row */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-0.5">
+                    <span className="text-slate-400">提现出账总计 (A):</span>
+                    <p className="font-bold text-slate-800 text-[12.5px] font-mono">{CASH_FORMATTER.format(selectedItem.withdrawnAmount)}</p>
+                  </div>
+                  <div className="bg-sky-50/40 p-3 rounded-xl border border-sky-100 space-y-0.5">
+                    <span className="text-slate-400">本期货款应开 (A × 70.0%):</span>
+                    <p className="font-bold text-sky-750 text-[12.5px] font-mono">
+                      {CASH_FORMATTER.format(selectedItem.supplierInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.7))}
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-xl border space-y-0.5 ${((selectedItem.supplierInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.7)) - (selectedItem.supplierInvoice?.invoicedAmount ?? 0)) <= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+                    <span className="text-slate-400">已开票金额 / 收票缺额:</span>
+                    <p className={`font-bold text-[12.5px] font-mono ${((selectedItem.supplierInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.7)) - (selectedItem.supplierInvoice?.invoicedAmount ?? 0)) <= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {CASH_FORMATTER.format(selectedItem.supplierInvoice?.invoicedAmount ?? 0)} 
+                      <span className="text-[10px] block font-sans font-normal mt-0.5">
+                        {((selectedItem.supplierInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.7)) - (selectedItem.supplierInvoice?.invoicedAmount ?? 0)) <= 0 
+                          ? "✅ 已满额开齐" 
+                          : `⚠️ 缺发票: ${CASH_FORMATTER.format((selectedItem.supplierInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.7)) - (selectedItem.supplierInvoice?.invoicedAmount ?? 0))}`
+                        }
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. Detailed sub-table */}
+                <div className="space-y-3 font-sans">
+                  <h4 className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" />
+                    登记的厂家发票明细列表
+                  </h4>
+                  <div className="border border-slate-150 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-slate-600 border-collapse">
+                      <thead className="bg-slate-50 text-[10.5px] text-slate-400 uppercase font-bold border-b border-slate-150">
+                        <tr>
+                          <th className="p-3 pl-4 font-bold">供应商 / 工厂名称</th>
+                          <th className="p-3 text-right font-bold">实际打款金额</th>
+                          <th className="p-3 text-right font-bold">应开票额 (70%)</th>
+                          <th className="p-3 text-right font-bold">已开普票/专票</th>
+                          <th className="p-3 text-center font-bold">发票状态</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-[10.5px] font-mono leading-relaxed">
+                        {selectedItem.supplierInvoice?.details?.length === 0 || !selectedItem.supplierInvoice?.details ? (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-slate-400 font-sans">
+                              暂无此科目发票明细记录
+                            </td>
+                          </tr>
+                        ) : (
+                          selectedItem.supplierInvoice.details.map((detail, dIdx) => (
+                            <tr key={dIdx} className="hover:bg-slate-50/50">
+                              <td className="p-3 pl-4 font-bold text-slate-700 font-sans max-w-[200px] truncate animate-fade-in" title={detail.supplierName}>
+                                {detail.supplierName}
+                              </td>
+                              <td className="p-3 text-right">{CASH_FORMATTER.format(detail.paidAmount)}</td>
+                              <td className="p-3 text-right text-slate-800 font-bold">{CASH_FORMATTER.format(detail.payableInvoiceAmount)}</td>
+                              <td className="p-3 text-right font-medium text-slate-700">
+                                <div className="space-y-0.5">
+                                  <span className="text-slate-850 font-bold block">{CASH_FORMATTER.format(detail.invoicedAmount)}</span>
+                                  <span className="text-[9.5px] text-slate-400 block font-normal font-sans">
+                                    普: {CASH_FORMATTER.format(detail.normalInvoiceAmount || 0)} | 专: {CASH_FORMATTER.format(detail.specialInvoiceAmount || 0)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center font-sans">
+                                <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold ${
+                                  detail.status === "已完成" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                                  detail.status === "疑似超开" ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-700 border border-amber-100"
+                                }`}>
+                                  {detail.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50 gap-2">
+                <button
+                  onClick={() => setSupplierDetailOpen(false)}
+                  className="bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 px-5 py-2 rounded-xl transition-all font-sans"
+                >
+                  关闭
+                </button>
+                <button
+                  onClick={() => {
+                    setSupplierDetailOpen(false);
+                    setFormProprietorId(selectedItem.id);
+                    setFormType("manufacturer");
+                    setShowInvoicingModal(true);
+                  }}
+                  className="bg-sky-650 hover:bg-sky-700 font-bold text-white px-5 py-2 rounded-xl transition-all font-sans"
+                >
+                  登记货款发票
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal 3: Operator Invoice Details */}
+      <AnimatePresence>
+        {operatorDetailOpen && selectedItem && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[110] p-4 text-xs font-sans">
+            <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden border border-slate-150">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-emerald-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-emerald-100 text-emerald-700 p-2 rounded-xl border border-emerald-200">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800">代运营公司服务费发票详情</h3>
+                    <p className="text-[10.5px] text-slate-400 mt-0.5">赫得运营票务核对台：核对网银已付款项与服务商反开发票票务</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setOperatorDetailOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 outline-none p-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-all font-sans"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                {/* 1. Statistics Row */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-0.5">
+                    <span className="text-slate-400">网银已付运营服务费 (A):</span>
+                    <p className="font-bold text-slate-800 text-[12.5px] font-mono">
+                      {CASH_FORMATTER.format(selectedItem.operatorInvoice?.details?.[0]?.paidAmount ?? (selectedItem.withdrawnAmount * 0.13))}
+                    </p>
+                  </div>
+                  <div className="bg-emerald-50/40 p-3 rounded-xl border border-emerald-100 space-y-0.5">
+                    <span className="text-slate-400">理论本期应开票 (A × 100%):</span>
+                    <p className="font-bold text-emerald-850 text-[12.5px] font-mono">
+                      {CASH_FORMATTER.format(selectedItem.operatorInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.13))}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-0.5">
+                    <span className="text-slate-400">已收代运营发票 / 补票缺额:</span>
+                    <p className="font-bold text-slate-800 text-[12.5px] font-mono">
+                      {CASH_FORMATTER.format(selectedItem.operatorInvoice?.invoicedAmount ?? 0)}
+                      <span className="text-[10px] block font-sans font-normal text-slate-400 mt-0.5">
+                        {((selectedItem.operatorInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.13)) - (selectedItem.operatorInvoice?.invoicedAmount ?? 0)) <= 300 
+                          ? "✅ 票款状态良好" 
+                          : `⚠️ 缺收服务费票: ${CASH_FORMATTER.format((selectedItem.operatorInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.13)) - (selectedItem.operatorInvoice?.invoicedAmount ?? 0))}`
+                        }
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. Detailed sub-table */}
+                <div className="space-y-3 font-sans">
+                  <h4 className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    服务商发票及打款对应列表
+                  </h4>
+                  <div className="border border-slate-150 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-slate-600 border-collapse">
+                      <thead className="bg-slate-50 text-[10.5px] text-slate-400 uppercase font-bold border-b border-slate-150">
+                        <tr>
+                          <th className="p-3 pl-4 font-bold">主代运营服务商</th>
+                          <th className="p-3 text-right font-bold">网银已付服务款</th>
+                          <th className="p-3 text-right font-bold">算下本期应开</th>
+                          <th className="p-3 text-right font-bold">反开普票/专票</th>
+                          <th className="p-3 text-center font-bold">发票状态</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-[10.5px] font-mono leading-relaxed">
+                        {selectedItem.operatorInvoice?.details?.length === 0 || !selectedItem.operatorInvoice?.details ? (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-slate-400 font-sans">
+                              暂无此科目服务费发票明细
+                            </td>
+                          </tr>
+                        ) : (
+                          selectedItem.operatorInvoice.details.map((detail, dIdx) => (
+                            <tr key={dIdx} className="hover:bg-slate-50/50">
+                              <td className="p-3 pl-4 font-bold text-slate-700 font-sans max-w-[200px]" title={detail.operatorName}>
+                                {detail.operatorName}
+                              </td>
+                              <td className="p-3 text-right">{CASH_FORMATTER.format(detail.paidAmount)}</td>
+                              <td className="p-3 text-right text-slate-800 font-bold">{CASH_FORMATTER.format(detail.payableInvoiceAmount)}</td>
+                              <td className="p-3 text-right font-medium text-slate-700">
+                                <div className="space-y-0.5">
+                                  <span className="text-slate-850 font-bold block">{CASH_FORMATTER.format(detail.invoicedAmount)}</span>
+                                  <span className="text-[9.5px] text-slate-400 block font-normal font-sans">
+                                    普: {CASH_FORMATTER.format(detail.normalInvoiceAmount || 0)} | 专: {CASH_FORMATTER.format(detail.specialInvoiceAmount || 0)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center font-sans">
+                                <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold ${
+                                  detail.status === "已完成" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                                  detail.status === "疑似超开" ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-700 border border-amber-100"
+                                }`}>
+                                  {detail.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50 gap-2">
+                <button
+                  onClick={() => setOperatorDetailOpen(false)}
+                  className="bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 px-5 py-2 rounded-xl transition-all font-sans"
+                >
+                  关闭
+                </button>
+                <button
+                  onClick={() => {
+                    setOperatorDetailOpen(false);
+                    setFormProprietorId(selectedItem.id);
+                    setFormType("hede");
+                    setShowInvoicingModal(true);
+                  }}
+                  className="bg-emerald-650 hover:bg-emerald-700 font-bold text-white px-5 py-2 rounded-xl transition-all font-sans"
+                >
+                  登记服务费发票
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal 4: Ad Fee Invoice Details */}
+      <AnimatePresence>
+        {adDetailOpen && selectedItem && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[110] p-4 text-xs font-sans">
+            <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[85vh] overflow-hidden border border-slate-150">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-indigo-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 text-indigo-700 p-2 rounded-xl border border-indigo-200">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800">广告费物料/投流服务发票详情</h3>
+                    <p className="text-[10.5px] text-slate-400 mt-0.5">巨量千川/淘宝直通车/多开票方汇总台：应开票额以提现的 10% 进行核验</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setAdDetailOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 outline-none p-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition-all font-sans"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                {/* 1. Statistics Row */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-0.5">
+                    <span className="text-slate-400">网银已付平台广告费 (A):</span>
+                    <p className="font-bold text-slate-800 text-[12.5px] font-mono">
+                      {CASH_FORMATTER.format(selectedItem.adInvoice?.details?.reduce((sum, d) => sum + d.paidAmount, 0) ?? (selectedItem.withdrawnAmount * 0.1))}
+                    </p>
+                  </div>
+                  <div className="bg-indigo-50/40 p-3 rounded-xl border border-indigo-100 space-y-0.5">
+                    <span className="text-slate-400">折合本期应开票额 (A):</span>
+                    <p className="font-bold text-indigo-855 text-[12.5px] font-mono">
+                      {CASH_FORMATTER.format(selectedItem.adInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.1))}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-0.5">
+                    <span className="text-slate-400">已收千川广告票 / 缺票情况:</span>
+                    <p className="font-bold text-slate-800 text-[12.5px] font-mono">
+                      {CASH_FORMATTER.format(selectedItem.adInvoice?.invoicedAmount ?? 0)}
+                      <span className="text-[10px] block font-sans font-normal text-slate-400 mt-0.5">
+                        {((selectedItem.adInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.1)) - (selectedItem.adInvoice?.invoicedAmount ?? 0)) <= 300 
+                          ? "✅ 票据已对账开齐" 
+                          : `⚠️ 缺投流发票: ${CASH_FORMATTER.format((selectedItem.adInvoice?.payableAmount ?? (selectedItem.withdrawnAmount * 0.1)) - (selectedItem.adInvoice?.invoicedAmount ?? 0))}`
+                        }
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. Detailed sub-table */}
+                <div className="space-y-3 font-sans">
+                  <h4 className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                    主体对应的投流平台与收款代理发票
+                  </h4>
+                  <div className="border border-slate-150 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-slate-600 border-collapse">
+                      <thead className="bg-slate-50 text-[10.5px] text-slate-400 uppercase font-bold border-b border-slate-150">
+                        <tr>
+                          <th className="p-3 pl-4 font-bold">投流平台 / 收款开票代理方</th>
+                          <th className="p-3 text-right font-bold">网银已付投流款</th>
+                          <th className="p-3 text-right font-bold">应返开票面额</th>
+                          <th className="p-3 text-right font-bold">已返普票/专票</th>
+                          <th className="p-3 text-center font-bold">对账状态</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-[10.5px] font-mono leading-relaxed">
+                        {selectedItem.adInvoice?.details?.length === 0 || !selectedItem.adInvoice?.details ? (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-slate-400 font-sans">
+                              暂无此科目广告发票明细
+                            </td>
+                          </tr>
+                        ) : (
+                          selectedItem.adInvoice.details.map((detail, dIdx) => (
+                            <tr key={dIdx} className="hover:bg-slate-50/50 animate-fade-in">
+                              <td className="p-3 pl-4 font-sans font-medium text-slate-705">
+                                <div className="space-y-0.5">
+                                  <span className="font-bold text-slate-800 text-[11px] font-sans block">{detail.platformName}</span>
+                                  <span className="text-[10px] text-slate-400 font-sans block truncate max-w-[200px]" title={detail.payeeName}>收款: {detail.payeeName}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">{CASH_FORMATTER.format(detail.paidAmount)}</td>
+                              <td className="p-3 text-right text-slate-800 font-bold">{CASH_FORMATTER.format(detail.payableInvoiceAmount)}</td>
+                              <td className="p-3 text-right font-medium text-slate-755">
+                                <div className="space-y-0.5">
+                                  <span className="text-slate-850 font-bold block">{CASH_FORMATTER.format(detail.invoicedAmount)}</span>
+                                  <span className="text-[9.5px] text-slate-400 block font-normal font-sans">
+                                    普: {CASH_FORMATTER.format(detail.normalInvoiceAmount || 0)} | 专: {CASH_FORMATTER.format(detail.specialInvoiceAmount || 0)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center font-sans">
+                                <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold ${
+                                  detail.status === "已完成" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                                  detail.status === "疑似超开" ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-700 border border-amber-100"
+                                }`}>
+                                  {detail.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50 gap-2">
+                <button
+                  onClick={() => setAdDetailOpen(false)}
+                  className="bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 px-5 py-2 rounded-xl transition-all font-sans"
+                >
+                  关闭
+                </button>
+                <button
+                  onClick={() => {
+                    setAdDetailOpen(false);
+                    setFormProprietorId(selectedItem.id);
+                    setFormType("qianchuan");
+                    setShowInvoicingModal(true);
+                  }}
+                  className="bg-indigo-650 hover:bg-indigo-700 font-bold text-white px-5 py-2 rounded-xl transition-all font-sans"
+                >
+                  登记投流发票
+                </button>
+              </div>
             </div>
           </div>
         )}
