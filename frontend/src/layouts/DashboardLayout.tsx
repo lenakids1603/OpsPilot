@@ -21,10 +21,10 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ userEmail, onLogout }: DashboardLayoutProps) {
   // Navigation states
-  const [selectedParent, setSelectedParent] = useState<string>("工作台");
-  const [selectedSub, setSelectedSub] = useState<string>("经营概览");
+  const [selectedParent, setSelectedParent] = useState<string>("Dashboard");
+  const [selectedSub, setSelectedSub] = useState<string>("经营首页");
   const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({
-    "工作台": true
+    "Dashboard": true
   });
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);

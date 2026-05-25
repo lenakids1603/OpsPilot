@@ -5,7 +5,7 @@
 
 import React from "react";
 import { 
-  LayoutDashboard, TrendingUp, Boxes, Palette, ShoppingCart, Truck, Headphones, Percent, Users, Settings 
+  LayoutDashboard, Wallet, Users, Boxes, Headphones, Database
 } from "lucide-react";
 
 export interface MenuItem {
@@ -16,53 +16,33 @@ export interface MenuItem {
 
 export const MENU_ITEMS: MenuItem[] = [
   {
-    title: "工作台",
+    title: "Dashboard",
     icon: <LayoutDashboard className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["经营概览", "异常提醒"]
-  },
-  {
-    title: "销售与退款",
-    icon: <TrendingUp className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["销售分析", "退款分析"]
-  },
-  {
-    title: "产品与库存",
-    icon: <Boxes className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["产品列表", "产品详情"]
-  },
-  {
-    title: "设计开发",
-    icon: <Palette className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["设计方案", "面辅料信息", "外来样品"]
-  },
-  {
-    title: "采购与供应",
-    icon: <ShoppingCart className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["采购总览", "采购成本", "入仓超时预警"]
-  },
-  {
-    title: "发货履约",
-    icon: <Truck className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["发货总览", "订单超时预警"]
-  },
-  {
-    title: "客服售后",
-    icon: <Headphones className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["投诉列表", "投诉登记"]
+    submenus: ["经营首页"]
   },
   {
     title: "财务系统",
-    icon: <Percent className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["财务总览", "公司资金流水", "供应商对账", "利润分析"]
+    icon: <Wallet className="w-4.5 h-4.5 flex-shrink-0" />,
+    submenus: ["财务总览", "公司资金流水", "个体户主体管理", "银行账户管理", "额度预警"]
   },
   {
-    title: "人力资源",
+    title: "供应商系统",
     icon: <Users className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["员工档案", "薪资记录"]
+    submenus: ["供应商总览", "供应商档案", "供应商账单核对", "付款登记", "开票登记", "采购超时预警"]
   },
   {
-    title: "系统设置",
-    icon: <Settings className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["员工账号", "职位设置", "权限设置", "操作日志"]
+    title: "商品系统",
+    icon: <Boxes className="w-4.5 h-4.5 flex-shrink-0" />,
+    submenus: ["商品档案", "SKU 管理", "商品详情", "图片搜索入口"]
+  },
+  {
+    title: "客服 / 售后",
+    icon: <Headphones className="w-4.5 h-4.5 flex-shrink-0" />,
+    submenus: ["商品投诉登记", "异常退款商品", "质量问题分析"]
+  },
+  {
+    title: "数据中心",
+    icon: <Database className="w-4.5 h-4.5 flex-shrink-0" />,
+    submenus: ["数据导入", "导入记录", "数据异常记录"]
   }
 ];

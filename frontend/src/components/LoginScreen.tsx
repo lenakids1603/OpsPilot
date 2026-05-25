@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { Mail, Lock, LogIn, Check } from "lucide-react";
+import { Mail, Lock, LogIn, Check, AlertCircle } from "lucide-react";
 
 interface LoginScreenProps {
   onLoginSuccess: (email: string) => void;
@@ -12,16 +12,23 @@ interface LoginScreenProps {
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState("service@lenakids.com");
-  const [password, setPassword] = useState("••••••••");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
+    setError(null);
     
     // Simulate a fast enterprise authentication loading bar
     setTimeout(() => {
+      if (password !== "lena") {
+        setIsLoggingIn(false);
+        setError("密码错误，请输入正确的密码。");
+        return;
+      }
       setIsLoggingIn(false);
       onLoginSuccess(email);
     }, 1200);
@@ -125,7 +132,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setError(null); }}
                   className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006591] focus:border-transparent transition-all duration-150"
                   placeholder="name@company.com"
                 />
@@ -154,12 +161,19 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setError(null); }}
                   className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006591] focus:border-transparent transition-all duration-150 font-mono"
-                  placeholder="••••••••"
+                  placeholder="请输入登录密码"
                 />
               </div>
             </div>
+
+            {error && (
+              <div className="flex items-center space-x-2 text-red-600 bg-red-50 border border-red-100 p-3 rounded-lg text-xs font-medium animate-pulse">
+                <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             {/* Options */}
             <div className="flex items-center">
