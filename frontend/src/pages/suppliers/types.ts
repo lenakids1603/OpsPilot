@@ -27,7 +27,7 @@ export interface DiscrepancyItem {
   item: string;
   amt: number;
   desc: string;
-  status: "未处理" | "已核准" | "已驳回" | "下期处理";
+  status: "未处理" | "已核准" | "已驳回" | "下期处理" | "已忽略";
   remark?: string;
 }
 

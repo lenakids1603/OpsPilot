@@ -6,9 +6,9 @@
 import React, { useState, useEffect } from "react";
 import { 
   Plus, Upload, Scale, BookOpen, Download, AlertTriangle, RefreshCw, BarChart2, CheckCircle2,
-  TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, AlertCircle, HelpCircle,
+  TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, AlertCircle, HelpCircle,
   Lightbulb, ChevronRight, Check, X, Printer, Landmark, DollarSign, PieChart, Percent, FileText,
-  Clock, Settings
+  Clock, Settings, Edit3
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import OverviewKPIsDetailDrawer from "./components/OverviewKPIsDetailDrawer";
@@ -43,6 +43,13 @@ export default function FinanceOverviewPage() {
   const [timeRange, setTimeRange] = useState<"day" | "yesterday" | "month" | "lastMonth" | "custom">("month");
   const [selectedPlatform, setSelectedPlatform] = useState("all");
   const [selectedShop, setSelectedShop] = useState("all");
+
+  // Custom range and book balances state
+  const [customStartDate, setCustomStartDate] = useState("2026-05-01T00:00");
+  const [customEndDate, setCustomEndDate] = useState("2026-05-26T23:59");
+  const [currentBookBalance, setCurrentBookBalance] = useState(12420000); // Default book balance matching accounts ¥12.42M
+  const [isEditingBalance, setIsEditingBalance] = useState(false);
+  const [editedBalanceValue, setEditedBalanceValue] = useState("12420000");
 
   // Drill-down Detail Drawer type
   const [activeDetailType, setActiveDetailType] = useState<"invoice_available" | "invoice_completed" | "payment_paid" | null>(null);
@@ -210,13 +217,20 @@ export default function FinanceOverviewPage() {
       statusLabelInc = "上月累计流入";
       statusLabelExp = "上月累计流出";
     } else if (timeRange === "custom") {
-      baseInc = 5680000;
-      baseExp = 3420000;
-      baseInvAble = 4900000;
-      baseInvEd = 3100000;
-      basePaid = 3050000;
-      subtextInc = "自定义跨度(60天)数据归总 | 平均日流入 ¥94,666";
-      subtextExp = "整体流向健康 | 平均日支出 ¥57,000";
+      let customDays = 30;
+      if (customStartDate && customEndDate) {
+        const start = new Date(customStartDate);
+        const end = new Date(customEndDate);
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        customDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+      }
+      baseInc = customDays * 95000;
+      baseExp = customDays * 57000;
+      baseInvAble = customDays * 82000;
+      baseInvEd = customDays * 52000;
+      basePaid = customDays * 51000;
+      subtextInc = `自定义跨度(${customDays}天)数据归总 | 平均日流入 ¥95,000`;
+      subtextExp = `整体流向健康 | 平均日支出 ¥57,000`;
       statusLabelInc = "选定周期总收入";
       statusLabelExp = "选定周期总支出";
     } else {
@@ -283,6 +297,75 @@ export default function FinanceOverviewPage() {
   };
 
   const kpis = getFilteredKpis();
+
+  // Dynamic Initial Capital Calculator based on company's cash position trends
+  const getInitialCapital = () => {
+    let multiplier = 1.0;
+    if (selectedPlatform === "dy") {
+      multiplier *= 0.55;
+      if (selectedShop === "shop-dy1") multiplier *= 0.70;
+      else if (selectedShop === "shop-dy2") multiplier *= 0.30;
+    } else if (selectedPlatform === "taobao") {
+      multiplier *= 0.25;
+      if (selectedShop === "shop-tb1") multiplier *= 1.0;
+    } else if (selectedPlatform === "ks") {
+      multiplier *= 0.12;
+      if (selectedShop === "shop-ks1") multiplier *= 1.0;
+    } else if (selectedPlatform === "pdd") {
+      multiplier *= 0.08;
+      if (selectedShop === "shop-pdd1") multiplier *= 1.0;
+    } else {
+      if (selectedShop === "shop-dy1") multiplier *= 0.38;
+      else if (selectedShop === "shop-dy2") multiplier *= 0.17;
+      else if (selectedShop === "shop-tb1") multiplier *= 0.25;
+      else if (selectedShop === "shop-ks1") multiplier *= 0.12;
+      else if (selectedShop === "shop-pdd1") multiplier *= 0.08;
+    }
+
+    if (timeRange === "day") {
+      // Balance today at 00:00:00 = current - today's net cashflow
+      const netToday = (128000 - 98000) * multiplier;
+      return Math.round(currentBookBalance - netToday);
+    } else if (timeRange === "yesterday") {
+      // Balance yesterday at 00:00:00 = current - today's net - yesterday's net
+      const netToday = (128000 - 98000) * multiplier;
+      const netYesterday = (113800 - 85600) * multiplier;
+      return Math.round(currentBookBalance - netToday - netYesterday);
+    } else if (timeRange === "month") {
+      // Balance on 1st of this month = current - this month's net cashflow
+      const netMonth = (3450000 - 2100000) * multiplier;
+      return Math.round(currentBookBalance - netMonth);
+    } else if (timeRange === "lastMonth") {
+      // Balance on 1st of last month = current - this month's net - last month's net
+      const netMonth = (3450000 - 2100000) * multiplier;
+      const netLastMonth = (3210000 - 1980000) * multiplier;
+      return Math.round(currentBookBalance - netMonth - netLastMonth);
+    } else if (timeRange === "custom") {
+      // Calculate timespan from start of custom range to May 26, 2026
+      const start = new Date(customStartDate);
+      const today = new Date("2026-05-26T09:20:39Z");
+      const diffTime = today.getTime() - start.getTime();
+      const daysAgo = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      const effectiveDaysAgo = daysAgo > 0 ? daysAgo : 0;
+      const netSinceStart = effectiveDaysAgo * 52000 * multiplier;
+      return Math.round(currentBookBalance - netSinceStart);
+    }
+    return currentBookBalance;
+  };
+
+  const initialCapital = getInitialCapital();
+
+  // Dynamic status/subtitle descriptions for the period initial capital
+  const getInitialCapitalSubtitle = () => {
+    switch(timeRange) {
+      case "day": return "今日凌晨 00:00:00 账面起算资金";
+      case "yesterday": return "昨日凌晨 00:00:00 账面起算资金";
+      case "month": return "本月 1 号 00:00:00 账面起算资金";
+      case "lastMonth": return "上月 1 号 00:00:00 账面起算资金";
+      case "custom": return `自定义起点: ${customStartDate.replace("T", " ")} 账面资金`;
+      default: return "账面期初资金";
+    }
+  };
 
   // Custom Navigation Click Handler for KPI cards linking to Cashflow Page
   const handleCardClick = (direction: "income" | "expense") => {
@@ -445,30 +528,68 @@ export default function FinanceOverviewPage() {
 
       {/* Filter Toolbar Section */}
       <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        {/* Left Side: Time Period Filters */}
-        <div className="flex items-center gap-1.5 bg-slate-100/85 p-1 rounded-xl">
-          {[
-            { id: "day", label: "今日" },
-            { id: "yesterday", label: "昨日" },
-            { id: "month", label: "本月" },
-            { id: "lastMonth", label: "上月" },
-            { id: "custom", label: "自定义" },
-          ].map(opt => (
-            <button
-              key={opt.id}
-              onClick={() => {
-                setTimeRange(opt.id as any);
-                showToast(`已切换数据时间跨度为：${opt.label}`);
-              }}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                timeRange === opt.id 
-                  ? "bg-white text-[#006591] shadow-xs" 
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+        {/* Left Side: Time Period Filters & Custom Date Selectors */}
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-1.5 bg-slate-100/85 p-1 rounded-xl">
+            {[
+              { id: "day", label: "今日" },
+              { id: "yesterday", label: "昨日" },
+              { id: "month", label: "本月" },
+              { id: "lastMonth", label: "上月" },
+              { id: "custom", label: "自定义" },
+            ].map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  setTimeRange(opt.id as any);
+                  showToast(`已切换数据时间跨度为：${opt.label}`);
+                }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  timeRange === opt.id 
+                    ? "bg-white text-[#006591] shadow-xs" 
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <AnimatePresence>
+            {timeRange === "custom" && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, width: 0 }}
+                animate={{ opacity: 1, scale: 1, width: "auto" }}
+                exit={{ opacity: 0, scale: 0.95, width: 0 }}
+                className="flex items-center gap-2 bg-slate-50 border border-slate-100 p-1 rounded-xl shadow-3xs overflow-hidden"
+              >
+                <div className="flex items-center gap-1 px-1.5">
+                  <span className="text-[10px] font-bold text-slate-400">开始</span>
+                  <input 
+                    type="datetime-local" 
+                    value={customStartDate} 
+                    onChange={(e) => {
+                      setCustomStartDate(e.target.value);
+                      showToast(`已更新自定义起始时间: ${e.target.value}`);
+                    }}
+                    className="bg-white border border-[#e2e8f0] rounded-lg py-1 px-2 text-xs font-mono font-bold text-slate-700 outline-none focus:border-[#006591] focus:ring-1 focus:ring-[#006591] cursor-pointer"
+                  />
+                </div>
+                <div className="flex items-center gap-1 px-1.5 border-l border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-400">截止</span>
+                  <input 
+                    type="datetime-local" 
+                    value={customEndDate} 
+                    onChange={(e) => {
+                      setCustomEndDate(e.target.value);
+                      showToast(`已更新自定义截止时间: ${e.target.value}`);
+                    }}
+                    className="bg-white border border-[#e2e8f0] rounded-lg py-1 px-2 text-xs font-mono font-bold text-slate-700 outline-none focus:border-[#006591] focus:ring-1 focus:ring-[#006591] cursor-pointer"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Right Side: Select Dropdowns */}
@@ -523,6 +644,133 @@ export default function FinanceOverviewPage() {
                 <option value="shop-pdd1">安安皮皮拼多多店</option>
               )}
             </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Company Cash Book Balances Summary banner */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        {/* Card 1: Initial Capital */}
+        <div className="flex items-center gap-4 border-r border-dotted border-slate-100 last:border-0 pr-4">
+          <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-[#006591] shrink-0">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-400 block tracking-wider uppercase">
+              初始静态资金
+            </span>
+            <span className="text-xl md:text-2xl font-black font-mono text-slate-800 tracking-tight block mt-0.5">
+              ¥{initialCapital.toLocaleString()}
+            </span>
+            <span className="text-[10px] text-[#006591] font-semibold block mt-0.5 truncate">
+              {getInitialCapitalSubtitle()}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Period Surplus */}
+        <div className="flex items-center gap-4 border-r border-dotted border-slate-100 last:border-0 pr-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${kpis.net >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
+            {kpis.net >= 0 ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-400 block tracking-wider uppercase">
+              期间盈余变动
+            </span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className={`text-xl md:text-2xl font-black font-mono tracking-tight ${kpis.net >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                {kpis.net >= 0 ? "+" : "-"}¥{Math.abs(kpis.net).toLocaleString()}
+              </span>
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${kpis.net >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
+                {kpis.net >= 0 ? "顺差" : "逆差"}
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+              期间流入 ¥{kpis.income.toLocaleString()} | 流出 ¥{kpis.expense.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Current Book Capital (Editable) */}
+        <div className="flex items-center gap-4 pl-0 pr-2">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+            <Wallet className="w-6 h-6" />
+          </div>
+          <div className="min-w-0 flex-grow">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-400 block tracking-wider uppercase">
+                当前公司账面资金
+              </span>
+              {!isEditingBalance && (
+                <button 
+                  onClick={() => {
+                    setEditedBalanceValue(currentBookBalance.toString());
+                    setIsEditingBalance(true);
+                  }}
+                  title="修改账面金额"
+                  className="p-1 text-slate-400 hover:text-[#006591] hover:bg-slate-50 rounded transition-colors cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {isEditingBalance ? (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="text-base font-bold font-mono text-slate-800">¥</span>
+                <input 
+                  type="number" 
+                  value={editedBalanceValue}
+                  onChange={(e) => setEditedBalanceValue(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 outline-none rounded-lg px-2 py-0.5 text-xs font-semibold font-mono w-28 focus:border-[#006591] focus:ring-1 focus:ring-[#006591]"
+                  autoFocus
+                  onBlur={() => {
+                    const val = parseFloat(editedBalanceValue);
+                    if (!isNaN(val) && val >= 0) {
+                      setCurrentBookBalance(val);
+                      setIsEditingBalance(false);
+                      showToast("已更新公司实时账面资金！");
+                    } else {
+                      setIsEditingBalance(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const val = parseFloat(editedBalanceValue);
+                      if (!isNaN(val) && val >= 0) {
+                        setCurrentBookBalance(val);
+                        setIsEditingBalance(false);
+                        showToast("已成功更新公司实时账面资金！");
+                      }
+                    } else if (e.key === "Escape") {
+                      setIsEditingBalance(false);
+                    }
+                  }}
+                />
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const val = parseFloat(editedBalanceValue);
+                    if (!isNaN(val) && val >= 0) {
+                      setCurrentBookBalance(val);
+                      setIsEditingBalance(false);
+                      showToast("已成功更新公司实时账面资金！");
+                    }
+                  }}
+                  className="p-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md cursor-pointer transition-colors"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <span className="text-xl md:text-2xl font-black font-mono text-slate-800 tracking-tight block mt-0.5">
+                ¥{currentBookBalance.toLocaleString()}
+              </span>
+            )}
+            
+            <span className="text-[10px] text-slate-400 font-medium block mt-0.5 truncate">
+              公司全部银行账户及可用在保现金汇总余额
+            </span>
           </div>
         </div>
       </div>

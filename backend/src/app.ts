@@ -8,6 +8,7 @@ import path from "path";
 import healthRouter from "./routes/health";
 import geminiRouter from "./routes/gemini";
 import customerServiceRouter from "./routes/customerService";
+import supplierReconciliationRouter from "./routes/supplierReconciliation";
 
 const app = express();
 
@@ -22,5 +23,6 @@ app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 app.use("/api/health", healthRouter);
 app.use("/api/gemini", geminiRouter);
 app.use("/api/customer-service", customerServiceRouter);
+app.use("/api/supplier-reconciliations", supplierReconciliationRouter);
 
 export default app;
