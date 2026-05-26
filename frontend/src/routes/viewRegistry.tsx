@@ -14,6 +14,7 @@ import FinanceOverviewPage from "../pages/finance/FinanceOverviewPage";
 import CashflowPage from "../pages/finance/CashflowPage";
 import ProprietorsPage from "../pages/finance/ProprietorsPage";
 import IndividualInvoicePage from "../pages/finance/IndividualInvoicePage";
+import ArrivalVerificationPage from "../pages/finance/ArrivalVerificationPage";
 import SupplierOverviewPage from "../pages/suppliers/SupplierOverviewPage";
 import SupplierProfilesPage from "../pages/suppliers/SupplierProfilesPage";
 import SupplierBillAuditPage from "../pages/suppliers/SupplierBillAuditPage";
@@ -51,6 +52,7 @@ export function renderRegisteredView(selectedParent: string, selectedSub: string
   if (selectedParent === "财务系统") {
     if (selectedSub === "财务总览") return <FinanceOverviewPage />;
     if (selectedSub === "公司资金流水") return <CashflowPage />;
+    if (selectedSub === "到货核对中心") return <ArrivalVerificationPage />;
     if (selectedSub === "供应商账单核对") return <SupplierBillAuditPage defaultTab="audit" />;
     if (selectedSub === "个体户与银行账户" || selectedSub === "个体户账户管理") return <ProprietorsPage defaultTab="proprietors" />;
     if (selectedSub === "个体户票务管理" || selectedSub === "票务管理") return <IndividualInvoicePage />;
