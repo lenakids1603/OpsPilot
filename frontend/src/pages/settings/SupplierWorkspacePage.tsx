@@ -8,7 +8,8 @@ import {
   Building2, Phone, Mail, FileText, CheckCircle2, MapPin, 
   HelpCircle, X, Search, Bell, LogOut, ArrowRight, ArrowUpRight, 
   Package, Truck, DollarSign, ShieldAlert, Award, ChevronLeft, ChevronRight,
-  AlertTriangle 
+  AlertTriangle, UploadCloud, Send, History, Plus, RefreshCw,
+  Eye, ZoomIn, ZoomOut, RotateCw, RotateCcw
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -45,6 +46,226 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
   
   // Tabs of supplier workspace
   const tabs = ["工作台", "我的订单", "款式报价", "对账结算", "考核排名", "客户投诉"];
+
+  // Mock list of supplier product issues
+  const [productIssues] = useState<any[]>([
+    {
+      id: "FB-001",
+      feedbackDate: "2026-05-18",
+      styleNo: "26041503",
+      sku: "26041503AbaiSY120",
+      productName: "女童连衣裙",
+      color: "白色",
+      size: "120",
+      issuePosition: "袖口",
+      issueType: "开线",
+      issueDescription: "袖口处出现开线问题，双针走线不精密，导致穿着后脱开。",
+      feedbackCount: 1,
+      supplierRemark: "请后续生产加强袖口走线检查",
+      images: [
+        { id: "img-01", url: "https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-002",
+      feedbackDate: "2026-05-18",
+      styleNo: "26050304",
+      sku: "26050304AhuangLYQ150",
+      productName: "女童礼服裙",
+      color: "黄色",
+      size: "150",
+      issuePosition: "吊坠",
+      issueType: "吊坠缺失",
+      issueDescription: "客户反馈收到后衣服吊坠没有，包装袋内也未发现掉落吊坠。",
+      feedbackCount: 1,
+      supplierRemark: "请检查包装前配件是否齐全",
+      images: [
+        { id: "img-02", url: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-003",
+      feedbackDate: "2026-05-18",
+      styleNo: "26031205",
+      sku: "26031205AhuiSY130",
+      productName: "女童纱裙",
+      color: "灰色",
+      size: "130",
+      issuePosition: "面料",
+      issueType: "破洞",
+      issueDescription: "裙摆纱面局部断丝破损，形成破洞，疑似裁剪拉丝或包箱磨损。",
+      feedbackCount: 1,
+      supplierRemark: "请注意纱料裁剪和包装保护",
+      images: [
+        { id: "img-03", url: "https://images.unsplash.com/photo-1618220179428-22790b461013?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1618220179428-22790b461013?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-004",
+      feedbackDate: "2026-05-18",
+      styleNo: "26041509",
+      sku: "26041509Blan",
+      productName: "女童公主裙",
+      color: "蓝色",
+      size: "-",
+      issuePosition: "钻饰",
+      issueType: "掉钻",
+      issueDescription: "腰间装饰烫钻大面积脱落，极位不稳。",
+      feedbackCount: 1,
+      supplierRemark: "请检查钻饰粘合牢固度",
+      images: [
+        { id: "img-04", url: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-005",
+      feedbackDate: "2026-05-18",
+      styleNo: "26040701",
+      sku: "26040701BfenQZ140",
+      productName: "女童裙子",
+      color: "粉色",
+      size: "140",
+      issuePosition: "面料",
+      issueType: "起毛",
+      issueDescription: "面料表面严重起毛圈、起球，手感下降粗糙，疑似面料耐磨度或含棉成分问题。",
+      feedbackCount: 1,
+      supplierRemark: "请关注面料耐磨情况",
+      images: [
+        { id: "img-05", url: "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-006",
+      feedbackDate: "2026-05-18",
+      styleNo: "26042201",
+      sku: "26042201ClanCK160",
+      productName: "女童套装",
+      color: "蓝色",
+      size: "160",
+      issuePosition: "蕾丝",
+      issueType: "蕾丝破损",
+      issueDescription: "网格边缘蕾丝花边车线太靠内拉扯断开，多处花型损毁不完整。",
+      feedbackCount: 1,
+      supplierRemark: "请检查蕾丝车缝和包装过程",
+      images: [
+        { id: "img-06", url: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-007",
+      feedbackDate: "2026-05-18",
+      styleNo: "26042803",
+      sku: "26042803AbaiBX130",
+      productName: "女童衬衫",
+      color: "白色",
+      size: "130",
+      issuePosition: "蝴蝶结",
+      issueType: "蝴蝶结脱落",
+      issueDescription: "前胸蝴蝶结配饰拼接口缝线仅单针挂肉，导致穿着走动即松软断落。",
+      feedbackCount: 1,
+      supplierRemark: "请加强配件固定检查",
+      images: [
+        { id: "img-07", url: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-008",
+      feedbackDate: "2026-05-18",
+      styleNo: "26042803",
+      sku: "26042803AfenBX160",
+      productName: "女童衬衫",
+      color: "粉色",
+      size: "160",
+      issuePosition: "蝴蝶结",
+      issueType: "蝴蝶结脱落",
+      issueDescription: "蝴蝶结缝纫不平整，里面的钻托盘脱焊导致脱落。",
+      feedbackCount: 1,
+      supplierRemark: "请加强蝴蝶结配件检查",
+      images: [
+        { id: "img-08", url: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-009",
+      feedbackDate: "2026-05-18",
+      styleNo: "26042103",
+      sku: "26042103AbaiKS150",
+      productName: "女童开衫",
+      color: "白色",
+      size: "150",
+      issuePosition: "袖口",
+      issueType: "其他",
+      issueDescription: "袖裙车合断针破洞，袖子收口断线。",
+      feedbackCount: 1,
+      supplierRemark: "请严格把关断针检验规范",
+      images: [
+        { id: "img-09", url: "https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=810&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1582738411706-bfc8e691d1c2?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-010",
+      feedbackDate: "2026-05-18",
+      styleNo: "26042803",
+      sku: "26042803AbaiBX150",
+      productName: "女童衬衫",
+      color: "白色",
+      size: "150",
+      issuePosition: "钻饰",
+      issueType: "掉钻",
+      issueDescription: "衣服上钉花钉针及小珍珠粘合不够，松脱掉落。",
+      feedbackCount: 1,
+      supplierRemark: "加强手工粘扣件核验",
+      images: [
+        { id: "img-10", url: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-011",
+      feedbackDate: "2026-05-18",
+      styleNo: "26042703",
+      sku: "26042703AbaiSY130",
+      productName: "女童羊毛衫",
+      color: "白色",
+      size: "130",
+      issuePosition: "印花",
+      issueType: "其他",
+      issueDescription: "衣服上面的图案黑色线缺少一块，图案不完整，影响整衣美观。",
+      feedbackCount: 1,
+      supplierRemark: "加强绣花及贴布绣品质对色核实",
+      images: [
+        { id: "img-11", url: "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=150&auto=format&fit=crop&q=60" }
+      ]
+    },
+    {
+      id: "FB-012",
+      feedbackDate: "2026-05-18",
+      styleNo: "26042801",
+      sku: "26042801AfenSY150",
+      productName: "童装外套",
+      color: "粉色",
+      size: "150",
+      issuePosition: "纽扣",
+      issueType: "其他",
+      issueDescription: "纽扣掉落缺失，扣子线过松，极易拉扯掉落。",
+      feedbackCount: 1,
+      supplierRemark: "加强扣型紧致度手工把控",
+      images: [
+        { id: "img-12", url: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=820&auto=format&fit=crop&q=80", thumbnailUrl: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=150&auto=format&fit=crop&q=60" }
+      ]
+    }
+  ]);
+
+  // Product Feedback Filters
+  const [issueStyleFilter, setIssueStyleFilter] = useState("");
+  const [issueSkuFilter, setIssueSkuFilter] = useState("");
+  const [issuePositionFilter, setIssuePositionFilter] = useState("");
+  const [issueTypeFilter, setIssueTypeFilter] = useState("");
+
+  // Image lightbox preview state
+  const [previewImages, setPreviewImages] = useState<any[]>([]);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+  const [previewZoom, setPreviewZoom] = useState(1);
+  const [previewRotation, setPreviewRotation] = useState(0);
 
   // Mock list of 30 child-SKU items grouped by 4 iconic style numbers
   const [skus, setSkus] = useState<SubSKU[]>([
@@ -116,6 +337,43 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
   const weeklyComplaintsCount = useMemo(() => {
     return complaints.length;
   }, [complaints]);
+
+  // Derived filtered issues list for the "产品问题反馈列表" subpage
+  const filteredIssues = useMemo(() => {
+    return productIssues.filter(item => {
+      const matchStyle = !issueStyleFilter || item.styleNo.toLowerCase().includes(issueStyleFilter.toLowerCase());
+      const matchSku = !issueSkuFilter || item.sku.toLowerCase().includes(issueSkuFilter.toLowerCase());
+      const matchPosition = !issuePositionFilter || item.issuePosition === issuePositionFilter;
+      const matchType = !issueTypeFilter || item.issueType === issueTypeFilter;
+      return matchStyle && matchSku && matchPosition && matchType;
+    });
+  }, [productIssues, issueStyleFilter, issueSkuFilter, issuePositionFilter, issueTypeFilter]);
+
+  const problemPositions = ["全部", "衣领", "袖口", "裙摆", "腰部", "拉链", "纽扣", "吊坠", "蝴蝶结", "蕾丝", "钻饰", "面料", "里布", "印花", "包装", "纱裙"];
+  const problemTypes = ["全部", "开线", "破洞", "掉钻", "起毛", "吊坠缺失", "蝴蝶结掉落", "蕾丝破损", "配件缺失", "脏污", "染色", "色差", "尺码异常", "做工问题", "其他"];
+
+  // Invoice state values for the new Invoice submission tab
+  const [invoices, setInvoices] = useState<any[]>([
+    {
+      id: "INV-202610-159",
+      amount: 135000.00,
+      taxRate: "13%",
+      taxAmount: 15530.97,
+      batchNo: "SET-202610-01",
+      invoiceNo: "033002620159",
+      fileName: "ZH_FP_88291_01.pdf",
+      status: "已过账销账",
+      date: "2026-10-21",
+      comments: "PO-20260905 货款首批 100% 全额发票"
+    }
+  ]);
+
+  const [invoiceFormBatch, setInvoiceFormBatch] = useState("SET-202610-02");
+  const [invoiceFormNo, setInvoiceFormNo] = useState("");
+  const [invoiceFormAmount, setInvoiceFormAmount] = useState("58000");
+  const [invoiceFormTaxRate, setInvoiceFormTaxRate] = useState("13%");
+  const [invoiceFormComments, setInvoiceFormComments] = useState("");
+  const [uploadedInvoiceFile, setUploadedInvoiceFile] = useState<string | null>(null);
 
   // Dialog states for Actions
   const [modalType, setModalType] = useState<"quote" | "bill" | "detail" | null>(null);
@@ -327,7 +585,7 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
             <div>
               <span className="font-bold text-slate-705 block leading-tight">{userEmail || "张经理"}</span>
               <span className="text-[8.5px] text-emerald-600 block leading-none font-medium mt-0.5">
-                {userEmail === "gys@lenakids.com" ? "供应商特权模式" : "账号已启用"}
+                {userEmail === "gys@lenakids.com" || userEmail === "gys" ? "供应商特权模式" : "账号已启用"}
               </span>
             </div>
           </div>
@@ -394,12 +652,18 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
         </div>
 
         {/* Metric 3 */}
-        <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div 
+          onClick={() => {
+            setActiveTab("发票提交");
+            showToast("🧾 已快速跳转至发票提交与账单明细面板");
+          }}
+          className="bg-slate-50 border border-slate-150 hover:bg-slate-100/60 hover:border-slate-350 cursor-pointer rounded-2xl p-5 shadow-xs flex items-center justify-between transition-all"
+        >
           <div className="space-y-1">
             <span className="text-slate-600 font-black text-[11px] block font-sans">待上传账单</span>
             <span className="text-[10px] text-slate-450 block">上月已入库货款的电子发票</span>
           </div>
-          <span className="text-3xl font-black text-slate-800 font-mono tracking-tight leading-none px-2.5">1</span>
+          <span className="text-3xl font-black text-indigo-650 font-mono tracking-tight leading-none px-2.5">1</span>
         </div>
 
         {/* Metric 4 */}
@@ -419,17 +683,17 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
           }}
           className={`border rounded-2xl p-5 shadow-xs flex items-center justify-between cursor-pointer transition-all ${
             weeklyComplaintsCount > 0 
-              ? "bg-rose-500/5 border-rose-300 hover:border-rose-450 hover:bg-rose-500/10 hover:shadow-xs" 
+              ? "bg-rose-50 border-rose-300 hover:border-rose-450 hover:bg-rose-100/50 hover:shadow-xs" 
               : "bg-slate-50 border-slate-150 hover:border-slate-350"
           }`}
         >
           <div className="space-y-1">
-            <span className={`font-black text-[11px] block font-sans ${weeklyComplaintsCount > 0 ? "text-rose-700" : "text-slate-650"}`}>
+            <span className={`font-black text-[11px] block font-sans ${weeklyComplaintsCount > 0 ? "text-rose-700 font-extrabold" : "text-slate-650"}`}>
               本周新增客诉
             </span>
             <span className="text-[10px] text-slate-400 block font-medium">终端专柜及买手的客诉监控</span>
           </div>
-          <span className={`text-3xl font-black font-mono tracking-tight leading-none px-2.5 ${
+          <span className={`text-4xl md:text-5xl font-black font-mono tracking-tight leading-none px-2.5 ${
             weeklyComplaintsCount > 0 ? "text-rose-600 animate-pulse" : "text-slate-400"
           }`}>
             {weeklyComplaintsCount}
@@ -672,23 +936,35 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
             </div>
 
             {/* Weekly Customer Complaint Alert Card */}
-            <div className="bg-gradient-to-br from-rose-50/50 to-rose-100/30 border border-rose-200 rounded-2xl p-5 shadow-xs space-y-3 relative overflow-hidden">
-              <div className="absolute right-4 bottom-4 opacity-10">
-                <AlertTriangle className="w-14 h-14 text-rose-600 animate-pulse" />
+            <div className="bg-gradient-to-br from-rose-50/60 to-rose-100/40 border border-rose-200 rounded-2xl p-5 shadow-xs space-y-4 relative overflow-hidden animate-pulse">
+              <div className="absolute right-4 bottom-14 opacity-10">
+                <AlertTriangle className="w-16 h-16 text-rose-600" />
               </div>
 
               <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-slate-805 text-xs flex items-center gap-1.5 bg-transparent">
-                  <AlertTriangle className="w-4.5 h-4.5 text-rose-500" />
+                <h4 className="font-extrabold text-slate-805 text-xs flex items-center gap-1.5 bg-transparent font-sans">
+                  <AlertTriangle className="w-4.5 h-4.5 text-rose-500 animate-bounce" />
                   本周新增客诉反馈
                 </h4>
-                <span className="px-2 py-0.5 rounded font-extrabold text-[8.5px] bg-rose-100 text-rose-800 scale-90">
-                  本周新增 {weeklyComplaintsCount} 件
+                <span className="px-2.5 py-0.5 rounded-full font-black text-[9px] bg-rose-500 text-white shadow-xs">
+                  急需关注
                 </span>
               </div>
 
-              <div className="space-y-1.5 text-slate-700">
-                <div className="flex items-center justify-between text-[11px] font-bold">
+              {/* Big spotlight number layout */}
+              <div className="flex items-center gap-4 bg-rose-500/10 border border-rose-200/60 rounded-2xl p-4 shadow-xs">
+                <div className="text-5xl font-black font-mono text-rose-600 leading-none shrink-0 tracking-tight flex items-baseline">
+                  {weeklyComplaintsCount}
+                  <span className="text-xs font-sans font-black text-rose-500 ml-1">件</span>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[11px] text-rose-750 font-extrabold block">待核对新增加急件</span>
+                  <span className="text-[10px] text-slate-450 block font-medium">来自百货商场与终端巡检</span>
+                </div>
+              </div>
+
+              <div className="space-y-1 text-slate-700">
+                <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-800">
                   <span>监督反馈: 缝制外观/水洗变形</span>
                 </div>
                 <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
@@ -701,9 +977,9 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                   setActiveTab("客户投诉");
                   showToast("📁 已成功切换至客户投诉面板查看列表");
                 }}
-                className="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-center text-[10.5px] transition-all cursor-pointer relative z-10"
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-center text-[10.5px] transition-all cursor-pointer relative z-10 shadow-sm"
               >
-                进入客户投诉页面
+                进入客户投诉页面 ({weeklyComplaintsCount} 件待处理)
               </button>
             </div>
 
@@ -1002,7 +1278,15 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                   <td className="p-4 pl-6 font-bold text-slate-805 font-mono">SET-202610-02</td>
                   <td className="p-4">PO-20261011 (雅致粉公主爬服)</td>
                   <td className="p-4 text-center font-bold font-mono text-slate-905">¥58,000.00</td>
-                  <td className="p-4 text-center text-slate-400 font-sans">点击右上角“上传发票/回单”进行快速对账</td>
+                  <td 
+                    onClick={() => {
+                      setModalType("bill");
+                      showToast("🧾 请在此填写并上传上月已配平入库货款的对应增值税电子发票！");
+                    }}
+                    className="p-4 text-center text-rose-600 hover:text-rose-700 underline font-black cursor-pointer transition-colors"
+                  >
+                    待提交 (点此快速上传发票)
+                  </td>
                   <td className="p-4 text-center font-bold font-mono text-indigo-600">2026-11-20</td>
                   <td className="p-4 text-center">
                     <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-amber-5 text-amber-600 border border-amber-100 animate-pulse">
@@ -1012,6 +1296,374 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* SUBPAGE VIEW: 发票提交 */}
+      {activeTab === "发票提交" && (
+        <div className="space-y-6">
+          {/* Top Banner Guide Card */}
+          <div className="bg-gradient-to-r from-indigo-650 via-blue-700 to-[#12002f] border border-indigo-300 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden select-none animate-fade-in">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl -translate-y-10 translate-x-10" />
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-center shadow-inner">
+                  <FileText className="w-8 h-8 text-indigo-200" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-200">自主数字化财务结算对账阶段</span>
+                    <span className="bg-indigo-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded leading-none uppercase">
+                      增值税专用/普通电子发票
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black tracking-tight mt-1 text-[#fcfdfe]">
+                    金蝶云 · 进项发票提报核对中心
+                  </h3>
+                  <p className="text-[11px] text-slate-200/80 mt-1 leading-snug font-medium font-sans">
+                    依据国家财税与金蝶电子发票互通标准设立。供应商完成货款对账后，需立即上传对应结算批次的防伪增值税电子发票。系统将对发票号码与查验防伪码开展全自动 OCR 智能防伪和税查。
+                  </p>
+                </div>
+              </div>
+
+              {/* Status indicators */}
+              <div className="flex items-center gap-6 divide-x divide-white/10 shrink-0">
+                <div className="text-center px-4">
+                  <span className="text-[10px] text-indigo-205 block font-black">当期预估待开票金额</span>
+                  <span className="text-3xl font-black font-mono tracking-tight text-amber-300 mt-1 block">
+                    ¥ 58,000.00
+                  </span>
+                </div>
+                <div className="text-center pl-6 pr-4">
+                  <span className="text-[10px] text-indigo-205 block font-black">待查验状态批次</span>
+                  <span className="text-3xl font-black font-mono tracking-tight text-white mt-1 block">
+                    1 <span className="text-xs font-sans font-medium text-slate-300">笔</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Side: Submit Form */}
+            <div className="lg:col-span-5 bg-white border border-slate-100 rounded-2xl shadow-xs p-5 space-y-4">
+              <div className="border-b border-slate-50 pb-3 flex items-center justify-between">
+                <h4 className="font-extrabold text-[#0c1b2c] text-xs flex items-center gap-2 uppercase font-sans">
+                  <UploadCloud className="w-4.5 h-4.5 text-indigo-600 animate-bounce" />
+                  提报财务增值税发票
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInvoiceFormBatch("SET-202610-02");
+                    setInvoiceFormNo("");
+                    setInvoiceFormAmount("58000");
+                    setInvoiceFormTaxRate("13%");
+                    setInvoiceFormComments("");
+                    setUploadedInvoiceFile(null);
+                    showToast("🧹 表单数据已全部重置");
+                  }}
+                  className="text-slate-400 hover:text-slate-650 flex items-center gap-1 font-bold scale-90"
+                  title="重打清空输入项"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  重置
+                </button>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!invoiceFormNo.trim()) {
+                    showToast("❌ 请录入正确的国家防伪发票号码 (8位或20位)！");
+                    return;
+                  }
+                  if (!uploadedInvoiceFile) {
+                    showToast("❌ 请上传发票的 PDF 电子档并查验！");
+                    return;
+                  }
+                  if (!parseFloat(invoiceFormAmount)) {
+                    showToast("❌ 请录入发票对应的校验含税结算金额！");
+                    return;
+                  }
+
+                  const currentTaxRateNum = parseFloat(invoiceFormTaxRate.replace("%", "")) || 0;
+                  const computedTaxAmount = (parseFloat(invoiceFormAmount) * currentTaxRateNum / 100).toFixed(2);
+
+                  const newInvoice = {
+                    id: "INV-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + Math.floor(100 + Math.random() * 900),
+                    amount: parseFloat(invoiceFormAmount),
+                    taxRate: invoiceFormTaxRate,
+                    taxAmount: parseFloat(computedTaxAmount),
+                    batchNo: invoiceFormBatch,
+                    invoiceNo: invoiceFormNo,
+                    fileName: uploadedInvoiceFile,
+                    status: "财务审核中",
+                    date: new Date().toISOString().slice(0, 10),
+                    comments: invoiceFormComments || "对账一致转出的结算批次货款发票提报"
+                  };
+
+                  setInvoices([newInvoice, ...invoices]);
+                  showToast("🎉 发票已提报成功！已录入金蝶云查验对账流程。");
+                  
+                  // clear state
+                  setInvoiceFormNo("");
+                  setInvoiceFormComments("");
+                  setUploadedInvoiceFile(null);
+                }}
+                className="space-y-4 text-xs font-semibold"
+              >
+                {/* Field 1: Associated batch */}
+                <div className="space-y-1 font-sans">
+                  <span className="text-slate-500 block">关联货款结算批次 *</span>
+                  <select
+                    value={invoiceFormBatch}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setInvoiceFormBatch(val);
+                      if (val === "SET-202610-02") {
+                        setInvoiceFormAmount("58000");
+                      } else {
+                        setInvoiceFormAmount("");
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-205 rounded-xl bg-white text-slate-800 focus:border-indigo-400 focus:outline-none"
+                  >
+                    <option value="SET-202610-02">SET-202610-02 (雅致粉公主爬服大货 - 货款 ¥58,000.00)</option>
+                    <option value="SET-202610-03">SET-202610-03 (深邃蓝小呢大衣定制打样 - 审理中代定款)</option>
+                    <option value="MANUAL_INPUT">手动填写其他往来批次 / 零散对账件</option>
+                  </select>
+                </div>
+
+                {/* Field 2: Invoice No */}
+                <div className="space-y-1 font-sans">
+                  <span className="text-slate-500 block">国家防伪发票号码 *</span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="请输入发票右上角的 8 位或 20 位纯数字代码..."
+                    value={invoiceFormNo}
+                    onChange={(e) => setInvoiceFormNo(e.target.value.replace(/\D/g, ""))}
+                    className="w-full px-3 py-2 border border-slate-205 rounded-xl text-slate-800 focus:border-indigo-400 focus:outline-none font-mono"
+                  />
+                </div>
+
+                {/* Grid for amount and tax rate */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Amount with tax */}
+                  <div className="space-y-1 font-sans">
+                    <span className="text-slate-500 block">发票含税总金额 (CNY) *</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="发票价税合计金额..."
+                      value={invoiceFormAmount}
+                      onChange={(e) => setInvoiceFormAmount(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-250 rounded-xl text-slate-800 focus:border-indigo-400 focus:outline-none font-mono font-bold animate-pulse text-[12.5px] bg-slate-50/50"
+                    />
+                  </div>
+
+                  {/* Tax Rate */}
+                  <div className="space-y-1 font-sans">
+                    <span className="text-slate-500 block">发票增值税税率 *</span>
+                    <select
+                      value={invoiceFormTaxRate}
+                      onChange={(e) => setInvoiceFormTaxRate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800 focus:border-indigo-400 focus:outline-none"
+                    >
+                      <option value="13%">13% (服饰大货增值税专票)</option>
+                      <option value="3%">3% (小规模纳税人增值税普票)</option>
+                      <option value="1%">1% (限时减征/个独税率)</option>
+                      <option value="0%">0% (特殊零税率免税)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Dynamic Tax Calculation Preview */}
+                {parseFloat(invoiceFormAmount) > 0 && (
+                  <div className="bg-slate-50 border border-slate-200/50 p-3.5 rounded-xl flex items-center justify-between font-mono text-[10.5px]">
+                    <div>
+                      <span className="text-[9px] text-slate-400 font-sans block leading-none mb-1">估算进项税款金额</span>
+                      <span className="font-extrabold text-indigo-700 block">
+                        ¥ {((parseFloat(invoiceFormAmount) * (parseFloat(invoiceFormTaxRate.replace("%", "")) || 0)) / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] text-slate-400 font-sans block leading-none mb-1">抵扣进价不含税额</span>
+                      <span className="font-bold text-slate-650 block">
+                        ¥ {(parseFloat(invoiceFormAmount) - (parseFloat(invoiceFormAmount) * (parseFloat(invoiceFormTaxRate.replace("%", "")) || 0) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* File Upload Zone */}
+                <div className="space-y-1 font-sans">
+                  <span className="text-slate-500 block">点击上传发票电子文件/影像件 *</span>
+                  {uploadedInvoiceFile ? (
+                    <div className="bg-indigo-50 border border-indigo-250 p-3.5 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-150 text-indigo-700 flex items-center justify-center font-bold text-[10px] shrink-0">
+                          PDF
+                        </div>
+                        <div className="space-y-0.5 leading-none">
+                          <span className="font-extrabold text-indigo-850 block max-w-[170px] truncate text-[9.5px]">
+                            {uploadedInvoiceFile}
+                          </span>
+                          <span className="text-[8.5px] text-slate-400 block font-mono">1.2 MB / 已就绪等待查验</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUploadedInvoiceFile(null)}
+                        className="text-rose-500 hover:text-rose-750 font-black px-2 py-1 bg-white hover:bg-rose-50 rounded-lg text-[9px] border border-rose-200/50 cursor-pointer"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => {
+                        const simulatedNames = [
+                          "LENA_FP_织锦服饰_SET2026_02.pdf",
+                          "INV_APP_HANGZHOU_ZHIJIN_58000.pdf",
+                          "ELECTRONIC_ZHUANPIAO_1024.jpg",
+                          "KINGDEE_EXPORT_INV8291.pdf"
+                        ];
+                        const chosen = simulatedNames[Math.floor(Math.random() * simulatedNames.length)];
+                        setUploadedInvoiceFile(chosen);
+                        showToast(`📎 成功模拟拖拽/加载本地发票 PDF: ${chosen}`);
+                      }}
+                      className="border border-dashed border-slate-300 bg-slate-50/50 hover:bg-slate-100/50 rounded-xl p-5 flex flex-col items-center justify-center gap-1 text-center cursor-pointer transition-colors"
+                    >
+                      <UploadCloud className="w-6 h-6 text-slate-400 animate-pulse" />
+                      <div>
+                        <span className="font-black text-[10.5px] text-slate-700 block">点击此区域模拟上传发票 PDF 文件</span>
+                        <span className="text-[8.5px] text-slate-400 block mt-0.5">支持 PDF, JPG，系统自动对齐税号查验真伪 (最限 15MB)</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Remarks Comments */}
+                <div className="space-y-1 font-sans">
+                  <span className="text-slate-500 block">给买手/财务附言（选填）</span>
+                  <textarea
+                    rows={2}
+                    value={invoiceFormComments}
+                    onChange={(e) => setInvoiceFormComments(e.target.value)}
+                    placeholder="请输入对账或结算发票附加备注..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 focus:border-indigo-400 focus:outline-none font-medium placeholder-slate-350 bg-white"
+                  />
+                </div>
+
+                {/* Form submit */}
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-[#002045] hover:bg-[#072449] text-white rounded-xl font-black text-center cursor-pointer transition-all uppercase text-[11px] flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  提报金蝶云发票查验核销
+                </button>
+              </form>
+            </div>
+
+            {/* Right Side: Submitted Invoice Archive list (7/12 span) */}
+            <div className="lg:col-span-7 bg-white border border-slate-100 rounded-2xl shadow-xs p-5 space-y-4">
+              <div className="border-b border-slate-50 pb-3 flex items-center justify-between">
+                <h4 className="font-extrabold text-[#0c1b2c] text-xs flex items-center gap-2 uppercase font-sans">
+                  <History className="w-4.5 h-4.5 text-indigo-650" />
+                  提报发票历史记录与查验销账动态
+                </h4>
+                <span className="text-[10px] text-slate-400 font-semibold font-sans">
+                  对账销账: {invoices.filter((inv) => inv.status === "已过账销账").length} 笔 | 查验审核: {invoices.filter((inv) => inv.status !== "已过账销账").length} 笔
+                </span>
+              </div>
+
+              {/* Invoices map */}
+              <div className="space-y-3.5">
+                {invoices.map((inv) => {
+                  const isSuccess = inv.status === "已过账销账";
+                  return (
+                    <div
+                      key={inv.id}
+                      className={`border rounded-xl p-4 transition-all relative overflow-hidden flex flex-col space-y-2 pb-3.5 ${
+                        isSuccess
+                          ? "border-slate-100 bg-slate-50/10"
+                          : "border-indigo-150 bg-indigo-50/15"
+                      }`}
+                    >
+                      {/* Top row */}
+                      <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-slate-800 text-[10px] bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-250">
+                            {inv.id}
+                          </span>
+                          <span className="text-slate-400 font-mono text-[9px]">
+                            {inv.date}
+                          </span>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded font-black text-[9px] border ${
+                            isSuccess
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-150"
+                              : "bg-indigo-50 text-indigo-700 border-indigo-150 animate-pulse"
+                          }`}
+                        >
+                          {inv.status}
+                        </span>
+                      </div>
+
+                      {/* Main breakdown */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-semibold py-1.5 border-y border-dashed border-slate-100">
+                        <div>
+                          <span className="text-[9px] text-slate-400 font-sans block leading-none">结算金额 (含税)</span>
+                          <span className="text-[12.5px] font-mono font-black text-[#0c1b2c] mt-1 block">
+                            ¥ {inv.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-slate-400 font-sans block leading-none">应征税率</span>
+                          <span className="text-[12px] font-mono font-black text-indigo-700 mt-1 block">
+                            {inv.taxRate}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-slate-400 font-sans block leading-none">匹配进项税额</span>
+                          <span className="text-[12px] font-mono font-black text-slate-700 mt-1 block">
+                            ¥ {inv.taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-slate-400 font-sans block leading-none">财务结算单</span>
+                          <span className="text-[11.5px] font-mono font-bold text-slate-500 mt-1 block">
+                            {inv.batchNo}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bottom attachment details and memo comments */}
+                      <div className="text-[10px] space-y-1 pt-1">
+                        <div className="flex items-center justify-between text-slate-500 flex-wrap gap-1">
+                          <span className="font-semibold font-sans leading-none text-slate-450 text-[9.5px]">
+                            发票号码: <span className="font-mono text-slate-705 font-extrabold">{inv.invoiceNo || "03300262XXXX"}</span>
+                          </span>
+                          <span className="font-sans flex items-center gap-1 font-bold text-indigo-650 hover:underline cursor-pointer leading-none text-[9.5px]">
+                            <FileText className="w-3.5 h-3.5 shrink-0" />
+                            {inv.fileName}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 mt-0.5 italic">
+                          备注说明：{inv.comments}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1144,7 +1796,7 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
               </div>
 
               {/* Buyer feedback review note */}
-              <div className="p-4 bg-emerald-50 border border-emerald-100/60 rounded-xl space-y-1.5 leading-relaxed text-[11px] text-emerald-800">
+              <div className="p-4 bg-emerald-50 border border-emerald-100/60 rounded-xl space-y-1.5 leading-relaxed text-[11px] text-emerald-805">
                 <span className="font-extrabold flex items-center gap-1">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 animate-pulse" />
                   采供协同评价与官方寄语清单：
@@ -1161,7 +1813,7 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                 <Award className="w-4.5 h-4.5 text-amber-500" />
                 同类服饰制造协同红黑荣誉榜
               </h4>
-              <p className="text-[10px] text-slate-400 leading-snug">
+              <p className="text-[10px] text-slate-405 leading-snug">
                 本平台协同工厂考核评级每月更新：基于真实的到货交期记录与买手联合质检大货通报进行精确运算。
               </p>
 
@@ -1192,7 +1844,7 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                         {r.rank}
                       </div>
                       <div>
-                        <span className={`text-[11px] block ${r.isSelf ? "font-black text-[#0c1b2c]" : "font-bold text-slate-700"}`} title={r.name}>
+                        <span className={`text-[11px] block ${r.isSelf ? "font-black text-[#0c1b2c]" : "font-bold text-slate-705"}`} title={r.name}>
                           {r.name}
                         </span>
                         <span className="text-[9px] text-[#006591] block mt-0.5 font-bold font-sans">{r.desc}</span>
@@ -1211,7 +1863,7 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
         </div>
       )}
 
-      {/* SUBPAGE VIEW: 客户投诉与整改中心 */}
+      {/* SUBPAGE VIEW: 客户投诉与质量问题反馈 (已合并) */}
       {activeTab === "客户投诉" && (
         <div className="space-y-6">
           {/* Top customer feedback card */}
@@ -1227,13 +1879,13 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] uppercase font-bold tracking-widest text-rose-200">全链路品质安全监控</span>
-                    <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded leading-none uppercase animate-pulse">24H 极速改进承诺</span>
+                    <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded leading-none uppercase animate-pulse">只读工作台</span>
                   </div>
                   <h3 className="text-lg font-black tracking-tight mt-1 text-[#fcfdfe]">
-                    终端客户投诉 & 生产工艺改进中心 (CAPA)
+                    终端客户投诉 & 产品质量反馈中心 (客户投诉)
                   </h3>
                   <p className="text-[11px] text-slate-200/80 mt-1 leading-snug">
-                    收集来自 Lenakids 各大直营商场百货、旗舰店及终端消费者的工艺瑕疵反馈。要求合作供应商在 24 小时内制定出厂工艺改善措施，严控大货缺陷。
+                    收集来自 Lenakids 各大直营商场百货、旗舰店、终端消费者的售后工艺及质量投诉。旨在指导合作供应商优化出厂工艺、改进对版大货。
                   </p>
                 </div>
               </div>
@@ -1241,102 +1893,243 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
               {/* Stats indicators */}
               <div className="flex items-center gap-6 divide-x divide-white/10 shrink-0">
                 <div className="text-center px-4">
-                  <span className="text-[10px] text-rose-200 block font-black">限时待办客诉</span>
-                  <span className="text-3xl font-black font-mono tracking-tight text-white mt-1 block">
-                    {weeklyComplaintsCount}<span className="text-xs font-sans font-medium text-rose-200"> 件</span>
+                  <span className="text-[10px] text-rose-100 block font-black uppercase tracking-wider">限时备件客诉</span>
+                  <span className="text-4xl md:text-5xl font-black font-mono tracking-tighter text-white animate-pulse mt-1 block">
+                    {filteredIssues.length}<span className="text-xs font-sans font-medium text-rose-200 ml-1">件</span>
                   </span>
                 </div>
                 <div className="text-center pl-6 pr-4">
-                  <span className="text-[10px] text-rose-200 block font-black">历史已结案件</span>
-                  <span className="text-3xl font-black font-mono tracking-tight text-white mt-1 block">15<span className="text-xs font-sans font-medium text-slate-300"> 批次</span></span>
+                  <span className="text-[10px] text-rose-200 block font-black uppercase tracking-wider">质量考核已结案</span>
+                  <span className="text-3xl font-black font-mono tracking-tight text-white/90 mt-1 block">15<span className="text-xs font-sans font-medium text-slate-300 ml-1">批次</span></span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Full Width Column: Complaints lists (grid span 12) */}
-            <div className="lg:col-span-12 bg-white border border-slate-100 rounded-2xl shadow-xs p-6 space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-50 pb-4">
-                <h4 className="font-extrabold text-slate-805 text-[12.5px] uppercase flex items-center gap-2 font-sans">
-                  <AlertTriangle className="w-4 h-4 text-rose-500" />
-                  品质瑕疵与反馈诉求档案清单
-                </h4>
-                <span className="text-[10.5px] text-slate-400 font-medium">当前显示 {complaints.length} 条记录</span>
+          {/* Simple Filters Row - INCREASED HEIGHT */}
+          <div className="bg-white border border-slate-100/90 rounded-2xl p-5 shadow-3xs flex flex-wrap items-center gap-4 select-none">
+            <div className="flex items-center gap-1.5 font-bold text-slate-550 mr-1 shrink-0">
+              <Search className="w-4 h-4 text-slate-400" />
+              <span className="text-[12px] text-slate-600">快速检索:</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1 min-w-[280px]">
+              {/* Style input */}
+              <div className="space-y-1 font-sans">
+                <label className="text-[10px] text-slate-400 font-extrabold block uppercase">款号</label>
+                <input
+                  type="text"
+                  placeholder="如：26041503"
+                  value={issueStyleFilter}
+                  onChange={(e) => setIssueStyleFilter(e.target.value)}
+                  className="w-full px-4 h-12 border border-slate-200 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-705 font-bold text-[12px] font-mono shadow-3xs"
+                />
               </div>
+              {/* SKU input */}
+              <div className="space-y-1 font-sans">
+                <label className="text-[10px] text-slate-400 font-extrabold block uppercase">商品编码 / SKU</label>
+                <input
+                  type="text"
+                  placeholder="输入SKU查找"
+                  value={issueSkuFilter}
+                  onChange={(e) => setIssueSkuFilter(e.target.value)}
+                  className="w-full px-4 h-12 border border-slate-200 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-705 font-bold text-[12px] font-mono shadow-3xs"
+                />
+              </div>
+              {/* Position Selector */}
+              <div className="space-y-1 font-sans">
+                <label className="text-[10px] text-slate-405 font-extrabold block">问题部位</label>
+                <select
+                  value={issuePositionFilter}
+                  onChange={(e) => setIssuePositionFilter(e.target.value === "全部" ? "" : e.target.value)}
+                  className="w-full px-3 h-12 border border-slate-205 focus:border-indigo-500 bg-white focus:outline-none rounded-xl text-slate-705 font-extrabold text-[12px] shadow-3xs cursor-pointer"
+                >
+                  {problemPositions.map(pos => (
+                    <option key={pos} value={pos}>{pos}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Type Selector */}
+              <div className="space-y-1 font-sans">
+                <label className="text-[10px] text-slate-405 font-extrabold block">问题类型</label>
+                <select
+                  value={issueTypeFilter}
+                  onChange={(e) => setIssueTypeFilter(e.target.value === "全部" ? "" : e.target.value)}
+                  className="w-full px-3 h-12 border border-slate-205 focus:border-indigo-500 bg-white focus:outline-none rounded-xl text-slate-705 font-extrabold text-[12px] shadow-3xs cursor-pointer"
+                >
+                  {problemTypes.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {/* Reset Button */}
+            {(issueStyleFilter || issueSkuFilter || issuePositionFilter || issueTypeFilter) && (
+              <button
+                onClick={() => {
+                  setIssueStyleFilter("");
+                  setIssueSkuFilter("");
+                  setIssuePositionFilter("");
+                  setIssueTypeFilter("");
+                  showToast("🧹 已清空所有检索条件");
+                }}
+                className="px-5 h-12 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold rounded-xl text-[12px] cursor-pointer transition-all shadow-3xs shrink-0 self-end flex items-center justify-center gap-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                重置
+              </button>
+            )}
+          </div>
 
-              {/* Complaints list rendered recursively */}
-              <div className="space-y-4">
-                {complaints.map((c) => (
-                  <div 
-                    key={c.id} 
-                    className={`border rounded-xl p-5 space-y-4 transition-all ${
-                      c.status === "待整改" 
-                        ? "border-rose-100 bg-rose-50/5" 
-                        : "border-slate-100 bg-slate-50/20"
-                    }`}
-                  >
-                    {/* Header line */}
-                    <div className="flex items-start justify-between flex-wrap gap-2 flex-row">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="font-bold text-slate-800 font-mono text-[11px]">
-                            {c.id}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded font-black text-[9px] scale-90 ${
-                            c.severity === "紧急" 
-                              ? "bg-rose-100 text-rose-800" 
-                              : "bg-slate-100 text-slate-600"
-                          }`}>
-                            {c.severity}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded font-black text-[9px] scale-90 ${
-                            c.status === "待整改" 
-                              ? "bg-rose-50 text-rose-700 animate-pulse border border-rose-100" 
-                              : c.status === "审核中"
-                                ? "bg-amber-50 text-amber-70 animate-pulse border border-amber-100"
-                                : "bg-emerald-50 text-emerald-800 font-black border border-emerald-100"
-                          }`}>
-                            状态: {c.status}
-                          </span>
+          {/* Elegant High Density ERP Table container */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+            {/* Top Table Summary Row */}
+            <div className="px-5 py-4 border-b border-slate-50 bg-[#fafbfe]/50 flex items-center justify-between flex-wrap gap-2 text-slate-400 font-medium">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-slate-805 text-xs text-left">
+                  📊 大货品质反馈对照及改善明细清单 (合并客户投诉原始档案)
+                </span>
+                <span className="text-[10px] bg-rose-50 text-rose-800 border border-rose-100 px-2.5 py-0.5 rounded-full font-extrabold">
+                  当前筛选: {filteredIssues.length} 条投诉记录
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">LENAKIDS COMPLAINTS MANAGEMENT SYSTEM</span>
+            </div>
+
+            {/* Scrollable Container */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse table-fixed select-none" style={{ minWidth: "1280px" }}>
+                <thead>
+                  <tr className="bg-[#fffdf2] border-b border-amber-100 text-amber-900/90 text-[11px] font-black uppercase tracking-tight select-none">
+                    <th className="py-3.5 px-4 w-[110px] text-center">反馈日期</th>
+                    <th className="py-3.5 px-4 w-[120px] text-center">款号</th>
+                    <th className="py-3.5 px-4 w-[210px]">商品编码/SKU</th>
+                    <th className="py-3.5 px-4 w-[130px]">商品名称</th>
+                    <th className="py-3.5 px-4 w-[110px]">颜色 / 尺码</th>
+                    <th className="py-3.5 px-4 w-[100px] text-center">问题部位</th>
+                    <th className="py-3.5 px-4 w-[110px] text-center">问题类型</th>
+                    <th className="py-3.5 px-4 w-[280px]">客户原始投诉与售后诉求</th>
+                    <th className="py-3.5 px-4 w-[80px] text-center">频次</th>
+                    <th className="py-3.5 px-4 w-[240px]">工艺改良官方建议</th>
+                    <th className="py-3.5 px-4 w-[140px] text-right">外观佐证图片</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-750 text-xs">
+                  {filteredIssues.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-16 text-center text-slate-400 font-medium">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <AlertTriangle className="w-8 h-8 text-slate-300 animate-bounce" />
+                          <span className="text-[12px] text-slate-500 font-bold">没有匹配符合当前筛选的客户投诉反馈</span>
+                          <span className="text-[10px] text-slate-400">请尝试更换检索关键词、更正款号或重置筛选条件</span>
                         </div>
-                        <p className="text-[10px] text-slate-400 font-sans font-medium">
-                          款号对应: <span className="font-bold text-slate-700">{c.sku} ({c.colorName})</span> | 提报日期: {c.date} | 来源: {c.source}
-                        </p>
-                      </div>
-                    </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredIssues.map((issue) => {
+                      return (
+                        <tr key={issue.id} className="hover:bg-[#fafbfe]/50 transition-colors">
+                          {/* Date */}
+                          <td className="py-3 px-4 text-center font-bold text-slate-550 font-sans">
+                            {issue.feedbackDate}
+                          </td>
+                          {/* Style */}
+                          <td className="py-3 px-4 text-center font-mono font-bold text-indigo-900">
+                            {issue.styleNo}
+                          </td>
+                          {/* SKU */}
+                          <td className="py-3 px-4 font-mono text-[10.5px] font-bold text-slate-700 select-all truncate tracking-tight" title={issue.sku}>
+                            {issue.sku}
+                          </td>
+                          {/* Product name */}
+                          <td className="py-3 px-4 font-bold text-slate-600 truncate">
+                            {issue.productName || "-"}
+                          </td>
+                          {/* Color / size */}
+                          <td className="py-3 px-4 text-slate-500 font-bold truncate">
+                            {issue.color} / {issue.size}
+                          </td>
+                          {/* Location */}
+                          <td className="py-3 px-4 text-center">
+                            <span className="bg-slate-100/80 text-slate-700/80 px-2 py-0.8 rounded-md text-[10px] font-black border border-slate-200/55">
+                              {issue.issuePosition}
+                            </span>
+                          </td>
+                          {/* Type */}
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2.5 py-0.8 rounded-md text-[10px] font-black border ${
+                              issue.issueType === "开线" 
+                                ? "bg-rose-50 border-rose-100 text-rose-700" 
+                                : issue.issueType === "破洞" || issue.issueType === "蕾丝破损"
+                                  ? "bg-red-50 border-red-100 text-red-700"
+                                  : issue.issueType === "掉钻" || issue.issueType === "配件缺失" || issue.issueType === "吊坠缺失" || issue.issueType === "蝴蝶结掉落"
+                                    ? "bg-amber-50 border-amber-100 text-amber-700"
+                                    : issue.issueType === "起毛"
+                                      ? "bg-indigo-50 border-indigo-100 text-indigo-700"
+                                      : "bg-slate-50 border-slate-200 text-slate-600"
+                            }`}>
+                              {issue.issueType}
+                            </span>
+                          </td>
+                          {/* Description */}
+                          <td className="py-3 px-4 font-medium text-slate-600 leading-relaxed max-w-[280px] text-[11px] select-text">
+                            {issue.issueDescription}
+                          </td>
+                          {/* Count */}
+                          <td className="py-3 px-4 text-center font-bold text-slate-600 font-sans">
+                            {issue.feedbackCount} 次
+                          </td>
+                          {/* Helper Remarks */}
+                          <td className="py-3 px-4 text-[#00254e] font-bold whitespace-pre-wrap leading-relaxed text-[11px]">
+                            🔔 {issue.supplierRemark || "-"}
+                          </td>
+                          {/* Images column on the rightmost */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2 flex-wrap">
+                              {issue.images && issue.images.length > 0 ? (
+                                issue.images.map((img: any, idx: number) => (
+                                  <div 
+                                    key={img.id}
+                                    onClick={() => {
+                                      setPreviewImages(issue.images);
+                                      setCurrentPreviewIndex(idx);
+                                      setPreviewZoom(1);
+                                      setPreviewRotation(0);
+                                    }}
+                                    className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-100 cursor-pointer shadow-3xs group hover:border-indigo-400 hover:shadow-1xs transition-all shrink-0 bg-slate-50"
+                                  >
+                                    <img
+                                      src={img.thumbnailUrl || img.url}
+                                      alt="Closeup defect asset"
+                                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                      <Eye className="w-4 h-4 text-white" />
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-[10px] text-slate-400 font-bold italic">暂无图片</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-                    {/* Complaint body */}
-                    <div className="bg-white/80 border border-slate-100 p-4 rounded-xl text-slate-700 font-medium leading-relaxed text-xs">
-                      <span className="font-black text-rose-700 block text-[9.5px] uppercase mb-1">
-                        🚨 买手及消费者原始反馈
-                      </span>
-                      {c.feedback}
-                    </div>
-
-                    {/* Resolved actions display */}
-                    {c.solution ? (
-                      <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-emerald-805 space-y-1 font-medium leading-relaxed text-xs">
-                        <span className="font-black text-emerald-700 block text-[9.5px] uppercase">
-                          ✅ 品牌核准工艺预防性改良方案 (CAPA)
-                        </span>
-                        <p>{c.solution}</p>
-                        <span className="text-[9px] text-emerald-600/80 block font-mono mt-1">
-                          反馈提交时间: 2026-05-26 10:15 / LenaKids品质督导
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="bg-amber-50/10 border border-dashed border-amber-305 p-4 rounded-xl space-y-1.5">
-                        <span className="text-[10px] text-amber-700 font-black block">
-                          ⏳ 工艺巡检与品质监控中
-                        </span>
-                        <p className="text-[10px] text-slate-500 font-sans text-left leading-relaxed">
-                          此客诉条目已转接品牌工艺改良序列，后续由买手代表拉网复验，请密切做好车位在制品检验把控。
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {/* Bottom Simple Pagination placeholders */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 select-none text-[11px]">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase">
+                显示第 1-{filteredIssues.length} 条数据 · 共计 {filteredIssues.length} 条记录
+              </span>
+              <div className="flex items-center gap-1.5 text-[10.5px]">
+                <button disabled className="px-3 py-1.5 text-slate-350 border border-slate-150 bg-slate-100/60 font-bold rounded-xl cursor-not-allowed">上一页</button>
+                <button className="px-3 py-1.5 bg-white text-indigo-750 font-black border border-indigo-200 rounded-xl shadow-3xs cursor-default">1</button>
+                <button disabled className="px-3 py-1.5 text-slate-350 border border-slate-150 bg-slate-100/60 font-bold rounded-xl cursor-not-allowed">下一页</button>
               </div>
             </div>
           </div>
@@ -1403,28 +2196,37 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
               ) : (
                 /* Interactive Forms */
                 <form onSubmit={handleActionSubmit} className="space-y-3 text-xs leading-normal">
-                  <div className="space-y-1">
-                    <span className="font-bold text-slate-500 block">
-                      {modalType === "quote" ? "请选择款号" : "发票或账单附言"}
+                  <div className="space-y-1 font-sans">
+                    <span className="font-bold text-slate-600 block">
+                      {modalType === "quote" ? "请输入提报款号 *" : "发票或账单附言"}
                     </span>
-                    <select className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800">
-                      <option value="LN-2024-W01">LN-2024-W01 - 雅致粉</option>
-                      <option value="LN-2024-W02">LN-2024-W02 - 深邃蓝</option>
-                      <option value="LN-2501-M10">LN-2501-M10 - 珍珠白</option>
-                    </select>
+                    {modalType === "quote" ? (
+                      <input
+                        type="text"
+                        required
+                        placeholder="如 LN-2502-W03 or LN-2024-W01..."
+                        className="w-full px-3 py-2 border border-slate-200 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-800 font-mono"
+                      />
+                    ) : (
+                      <select className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-slate-800">
+                        <option value="LN-2024-W01">LN-2024-W01 - 雅致粉</option>
+                        <option value="LN-2024-W02">LN-2024-W02 - 深邃蓝</option>
+                        <option value="LN-2501-M10">LN-2501-M10 - 珍珠白</option>
+                      </select>
+                    )}
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="font-bold text-slate-500 block">
-                      {modalType === "quote" ? "核定单件成本 (CNY) *" : "上传物料/发票 PDF 或 JPG 回单 *"}
+                  <div className="space-y-1 font-sans">
+                    <span className="font-bold text-slate-600 block">
+                      {modalType === "quote" ? "核定含税单件成本 (CNY) *" : "上传物料/发票 PDF 或 JPG 回单 *"}
                     </span>
                     {modalType === "quote" ? (
                       <input
                         type="number"
                         step="0.01"
                         required
-                        placeholder="请输入您的报价成本，例: 63.80"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                        placeholder="请输入您的含税报价成本，例: 63.80"
+                        className="w-full px-3 py-2 border border-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-0 rounded-xl font-bold font-mono text-slate-900"
                       />
                     ) : (
                       <div className="border border-dashed border-slate-350 bg-slate-50/50 rounded-xl p-5 flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer hover:bg-slate-50/80 transition-colors">
@@ -1436,12 +2238,12 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                   </div>
 
                   {modalType === "quote" && (
-                    <div className="space-y-1">
+                    <div className="space-y-1 font-sans">
                       <span className="font-bold text-slate-550 block">货期时效及打样规格说明</span>
                       <textarea
                         rows={2}
                         placeholder="例：纯棉爬服，面料克重220g，首批订单需要35天供货..."
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                        className="w-full px-3 py-2 border border-slate-200 focus:border-indigo-500 focus:outline-none rounded-xl"
                       />
                     </div>
                   )}
@@ -1464,6 +2266,111 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
                 </form>
               )}
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FULL SCREEN PHOTO LIGHTBOX */}
+      <AnimatePresence>
+        {previewImages && previewImages.length > 0 && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md select-none font-sans">
+            {/* Click backdrop to exit */}
+            <div className="absolute inset-0 cursor-default" onClick={() => setPreviewImages([])} />
+
+            {/* Controls panel header */}
+            <div className="absolute top-5 left-5 right-5 flex justify-between items-center text-white z-10 bg-slate-950/20 backdrop-blur-xs p-4 rounded-2xl border border-white/10">
+              <div className="flex items-center gap-3">
+                <span className="bg-white/10 px-3.5 py-1.8 rounded-xl border border-white/15 text-xs font-black tracking-tight">
+                  📷 关联问题照片佐证: {currentPreviewIndex + 1} / {previewImages.length}
+                </span>
+                <span className="text-[10px] text-slate-405 font-mono">比例: {(previewZoom * 100).toFixed(0)}% | 偏角: {previewRotation}°</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Zoom In button */}
+                <button 
+                  onClick={() => setPreviewZoom(z => Math.min(z + 0.25, 3.0))}
+                  title="放大图片"
+                  className="p-2 text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-xl cursor-pointer transition-all active:scale-95"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                {/* Zoom Out button */}
+                <button 
+                  onClick={() => setPreviewZoom(z => Math.max(z - 0.25, 0.5))}
+                  title="缩小图片"
+                  className="p-2 text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-xl cursor-pointer transition-all active:scale-95"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                {/* Rotate button */}
+                <button 
+                  onClick={() => setPreviewRotation(r => (r + 90) % 360)}
+                  title="顺时针旋转90°"
+                  className="p-2 text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-xl cursor-pointer transition-all active:scale-95"
+                >
+                  <RotateCw className="w-4 h-4" />
+                </button>
+                {/* Reset button */}
+                <button 
+                  onClick={() => { setPreviewZoom(1); setPreviewRotation(0); }}
+                  className="px-3 py-2 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-xl font-bold cursor-pointer transition-all active:scale-95"
+                >
+                  重置画布
+                </button>
+                {/* Close button */}
+                <button 
+                  onClick={() => setPreviewImages([])}
+                  title="关闭大图预览"
+                  className="p-2 text-rose-200 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 rounded-xl cursor-pointer ml-3 transition-all active:scale-95"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Left navigation arrow */}
+            {previewImages.length > 1 && (
+              <button
+                onClick={() => {
+                  setPreviewZoom(1);
+                  setPreviewRotation(0);
+                  setCurrentPreviewIndex(i => (i - 1 + previewImages.length) % previewImages.length);
+                }}
+                className="absolute left-6 top-1/2 -translate-y-1/2 p-3.5 bg-white/10 hover:bg-white/20 hover:scale-105 border border-white/20 rounded-full text-white cursor-pointer z-10 backdrop-blur-xs transition-all"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Main Stage Image wrapper */}
+            <div className="absolute inset-20 flex items-center justify-center overflow-hidden font-sans">
+              <motion.img
+                key={previewImages[currentPreviewIndex].id}
+                src={previewImages[currentPreviewIndex].url}
+                alt="Defect details closeup view"
+                className="max-w-full max-h-full object-contain shadow-2xl rounded-2xl origin-center"
+                style={{
+                  transform: `scale(${previewZoom}) rotate(${previewRotation}deg)`,
+                }}
+                animate={{ scale: previewZoom, rotate: previewRotation }}
+                transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            {/* Right navigation arrow */}
+            {previewImages.length > 1 && (
+              <button
+                onClick={() => {
+                  setPreviewZoom(1);
+                  setPreviewRotation(0);
+                  setCurrentPreviewIndex(i => (i + 1) % previewImages.length);
+                }}
+                className="absolute right-6 top-1/2 -translate-y-1/2 p-3.5 bg-white/10 hover:bg-white/20 hover:scale-105 border border-white/20 rounded-full text-white cursor-pointer z-10 backdrop-blur-xs transition-all"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
           </div>
         )}
       </AnimatePresence>

@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { Mail, Lock, LogIn, Check, AlertCircle } from "lucide-react";
+import { findUserByCredential } from "../utils/userStore";
 
 interface LoginScreenProps {
   onLoginSuccess: (email: string, role: "employee" | "supplier") => void;
@@ -12,7 +13,7 @@ interface LoginScreenProps {
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [role, setRole] = useState<"employee" | "supplier">("employee");
-  const [email, setEmail] = useState("service@lenakids.com");
+  const [email, setEmail] = useState("service");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -22,10 +23,10 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     setRole(newRole);
     setError(null);
     if (newRole === "employee") {
-      setEmail("service@lenakids.com");
+      setEmail("service");
       setPassword("");
     } else {
-      setEmail("gys@lenakids.com");
+      setEmail("gys");
       setPassword("gys");
     }
   };
@@ -37,6 +38,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     
     // Simulate a fast enterprise authentication loading bar
     setTimeout(() => {
+      const matchedUser = findUserByCredential(email, role === "employee" ? "内部员工" : "供应商");
+      
+      if (!matchedUser) {
+        setIsLoggingIn(false);
+        setError("登录账号不存在，请检查后重试。");
+        return;
+      }
+
+      if (matchedUser.status === "停用") {
+        setIsLoggingIn(false);
+        setError("该账号已被停用，请联系管理员。");
+        return;
+      }
+
       if (role === "employee") {
         if (password !== "lena") {
           setIsLoggingIn(false);
@@ -44,15 +59,15 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           return;
         }
         setIsLoggingIn(false);
-        onLoginSuccess(email, "employee");
+        onLoginSuccess(matchedUser.email || matchedUser.username || matchedUser.phone, "employee");
       } else {
-        if (email !== "gys@lenakids.com" || password !== "gys") {
+        if (password !== "gys") {
           setIsLoggingIn(false);
-          setError("供应商账号或密码错误，请检查后重试。");
+          setError("供应商密码错误，请检查后重试。");
           return;
         }
         setIsLoggingIn(false);
-        onLoginSuccess(email, "supplier");
+        onLoginSuccess(matchedUser.email || matchedUser.username || matchedUser.phone, "supplier");
       }
     }, 1200);
   };
@@ -168,22 +183,22 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field */}
+            {/* Email / Account Field */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#43474e]">
-                {role === "employee" ? "工作邮箱" : "工作邮箱 / 供应商账号"}
+                手机号 / 邮箱 / 用户名
               </label>
               <div className="relative rounded-lg shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Mail className="h-5 w-5" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(null); }}
                   className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006591] focus:border-transparent transition-all duration-150"
-                  placeholder="name@company.com"
+                  placeholder="请输入手机号 / 邮箱 / 用户名"
                 />
               </div>
             </div>
