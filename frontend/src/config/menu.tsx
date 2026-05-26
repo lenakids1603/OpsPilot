@@ -5,7 +5,7 @@
 
 import React from "react";
 import { 
-  LayoutDashboard, Wallet, Users, Boxes, Headphones, Database
+  LayoutDashboard, Wallet, Users, Boxes, Headphones, Database, Settings
 } from "lucide-react";
 
 export interface MenuItem {
@@ -44,5 +44,10 @@ export const MENU_ITEMS: MenuItem[] = [
     title: "数据中心",
     icon: <Database className="w-4.5 h-4.5 flex-shrink-0" />,
     submenus: ["数据导入", "导入记录", "数据异常记录"]
+  },
+  {
+    title: "系统设置",
+    icon: <Settings className="w-4.5 h-4.5 flex-shrink-0" />,
+    submenus: ["用户管理", "供应商账号管理", "角色权限配置", "供应商工作台"]
   }
 ];

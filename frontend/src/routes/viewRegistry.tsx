@@ -24,6 +24,10 @@ import ComplaintRegisterPage from "../pages/sales/ComplaintRegisterPage";
 import AbnormalRefundsPage from "../pages/sales/AbnormalRefundsPage";
 import QualityProblemAnalysisPage from "../pages/sales/QualityProblemAnalysisPage";
 import DataImportPage from "../pages/data/DataImportPage";
+import UserManagementPage from "../pages/settings/UserManagementPage";
+import SupplierAccountPage from "../pages/settings/SupplierAccountPage";
+import RolePermissionsPage from "../pages/settings/RolePermissionsPage";
+import SupplierWorkspacePage from "../pages/settings/SupplierWorkspacePage";
 
 import {
   TodayDataView, 
@@ -80,6 +84,14 @@ export function renderRegisteredView(selectedParent: string, selectedSub: string
     if (selectedSub === "数据导入") return <DataImportPage defaultTab="import" />;
     if (selectedSub === "导入记录") return <DataImportPage defaultTab="records" />;
     if (selectedSub === "数据异常记录") return <DataImportPage defaultTab="anomalies" />;
+  }
+
+  // 7. 系统设置
+  if (selectedParent === "系统设置") {
+    if (selectedSub === "用户管理") return <UserManagementPage />;
+    if (selectedSub === "供应商账号管理") return <SupplierAccountPage />;
+    if (selectedSub === "角色权限配置") return <RolePermissionsPage />;
+    if (selectedSub === "供应商工作台") return <SupplierWorkspacePage />;
   }
 
   // Fallback safely
