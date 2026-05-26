@@ -19,6 +19,7 @@ export default function App() {
   const handleLoginSuccess = (email: string, role: UserRole) => {
     setUserEmail(email);
     setUserRole(role);
+    localStorage.setItem("opspilot_user_email", email);
     setIsLoggedIn(true);
   };
 
