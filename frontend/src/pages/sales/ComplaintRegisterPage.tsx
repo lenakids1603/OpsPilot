@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   FileText, Plus, Search, Filter, ShieldAlert, CheckCircle2, XCircle, Info,
   AlertTriangle, Copy, Trash2, Edit3, Image as ImageIcon, History, Download,
-  Check, ArrowRight, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, RefreshCw, ZoomIn
+  Check, ArrowRight, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, RefreshCw, ZoomIn, Settings
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { 
@@ -116,6 +116,8 @@ export default function ComplaintRegisterPage() {
   // Local Image Queues (for Creation stage before ID exists)
   const [imageQueue, setImageQueue] = useState<{ file: File; compressedBlob: Blob; originalSize: number; compressedSize: number; previewUrl: string }[]>([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -358,11 +360,8 @@ export default function ComplaintRegisterPage() {
     showToast(`📋 已将 ${label} "${text}" 复制到剪切板。`);
   };
 
-  // Client Side Canvas Image compression WebP
-  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
+  // Shared helper to process image files (compression, validation, etc.)
+  const processFilesList = async (files: FileList | File[]) => {
     // Check count ceiling
     const existingCount = formMode === "edit" ? (activeComplaint?.images?.length || 0) : 0;
     if (existingCount + imageQueue.length + files.length > 6) {
@@ -380,7 +379,7 @@ export default function ComplaintRegisterPage() {
         continue;
       }
 
-      showToast(`✨ 理赔师正在进行前端 1600px 级最高质量 WebP 底损无感压缩: ${file.name}`);
+      showToast(`✨ 前端正在实施 WebP 底损高速无感压缩: ${file.name}`);
 
       try {
         const compressed = await compressAndConvertToWebp(file, 1600, 0.82);
@@ -398,10 +397,40 @@ export default function ComplaintRegisterPage() {
         showToast(`❌ 前端图片制备压缩失败: ${err.message}`);
       }
     }
+  };
+
+  // Client Side Canvas Image compression WebP
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    await processFilesList(files);
 
     // Clear file input value to allow reselecting the same image
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  // Drag and Drop interaction handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await processFilesList(e.dataTransfer.files);
     }
   };
 
@@ -1232,359 +1261,24 @@ export default function ComplaintRegisterPage() {
               {/* Form body */}
               <form onSubmit={handleSubmitForm} className="flex-grow overflow-y-auto p-6 space-y-6">
                 
-                {/* Check warning duplicate order */}
-                {orderCheckWarning && formMode === "create" && (
-                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div className="text-[11px] text-rose-700">
-                      <strong className="block font-extrabold">🚨 检测到历史重复客诉冲突：</strong>
-                      该订单编号 (<span className="font-mono font-black underline">{fdOrderNo}</span>) 已经在后台登记过客诉！
-                      请仔细核实买家是否在飞鸽聊天发出过同一订单的重复理赔，避免财务重复惩罚抵扣应付账。
-                    </div>
-                  </div>
-                )}
-
-                {/* Section A: Customer Info & Channel */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1 flex items-center gap-1">
-                    <span>1.</span> 基础与客单信息
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">投诉截止/登记日期 *</label>
-                      <input 
-                        type="date" 
-                        required 
-                        value={fdComplaintDate} 
-                        onChange={e => setFdComplaintDate(e.target.value)} 
-                        className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#006591] outline-none rounded-lg p-2.5 text-xs font-mono font-bold text-slate-850" 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">受理平台 *</label>
-                      <select 
-                        value={fdPlatform} 
-                        onChange={e => setFdPlatform(e.target.value as any)} 
-                        className="w-full bg-slate-50 border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-bold text-slate-700"
-                      >
-                        {PLATFORM_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">受理店铺名称 *</label>
-                      <select 
-                        value={fdShopCode} 
-                        onChange={e => setFdShopCode(e.target.value)} 
-                        className="w-full bg-slate-50 border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-bold text-slate-700"
-                      >
-                        {SHOP_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">订单编号 (16-20位) *</label>
-                      <div className="relative">
-                        <input 
-                          type="text" 
-                          required 
-                          value={fdOrderNo} 
-                          onChange={e => setFdOrderNo(e.target.value)} 
-                          onBlur={handleOrderNoBlur}
-                          placeholder="填写核准之购物平台交易订单号" 
-                          className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#006591] outline-none rounded-lg p-2.5 text-xs font-mono font-bold text-slate-800" 
-                        />
-                        {isCheckingOrder && <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin absolute right-3 top-3.5" />}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">申请售后单（非必填）</label>
-                      <input 
-                        type="text" 
-                        value={fdAfterSaleNo} 
-                        onChange={e => setFdAfterSaleNo(e.target.value)} 
-                        placeholder="多为逆向系统生成的 AS- 售后流水号" 
-                        className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-mono text-slate-800" 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">客户旺旺/抖音号昵称</label>
-                      <input 
-                        type="text" 
-                        value={fdCustomerNickname} 
-                        onChange={e => setFdCustomerNickname(e.target.value)} 
-                        placeholder="便于日后反查回访" 
-                        className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 outline-none rounded-lg p-2.5 text-xs text-slate-800" 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section B: Commodity Specs (SKU linkage catalog) */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1 flex items-center gap-1">
-                    <span>2.</span> 商品型号与SKU细则
-                  </h3>
-
-                  <div>
-                    <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">涉及瑕疵款号 *</label>
-                    <select 
-                      value={fdStyleNo} 
-                      onChange={e => handleStyleNoChange(e.target.value)} 
-                      className="w-full bg-slate-50 border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-mono font-bold text-slate-800"
-                    >
-                      <option value="">-- 请选择当前登记缺陷爆款 --</option>
-                      <option value="LN-2026-CO">LN-2026-CO (精梳棉连体爬服 - 婴儿装)</option>
-                      <option value="LN-2026-BL">LN-2026-BL (防惊跳舒适婴儿睡袋)</option>
-                      <option value="LN-2026-SO">LN-2026-SO (新生儿防脱纯棉袜3组装)</option>
-                      <option value="LN-2026-HD">LN-2026-HD (复古蔷薇拼接连衣裙 - 大童装)</option>
-                      <option value="LN-2026-TS">LN-2026-TS (高弹小熊打底T恤)</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">商品名称 *</label>
-                      <input 
-                        type="text" 
-                        required 
-                        value={fdProductName} 
-                        onChange={e => setFdProductName(e.target.value)} 
-                        placeholder="填充款号对应商名" 
-                        className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 outline-none rounded-lg p-2.5 text-xs" 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">商品条码 / SKU 编码 *</label>
-                      <input 
-                        type="text" 
-                        required 
-                        value={fdSkuCode} 
-                        onChange={e => setFdSkuCode(e.target.value)} 
-                        placeholder="例如：LN-2026-CO-PN-80" 
-                        className="w-full bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#006591] outline-none rounded-lg p-2.5 text-xs font-mono font-bold text-slate-800" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">颜色规格</label>
-                      <input type="text" value={fdColor} onChange={e => setFdColor(e.target.value)} placeholder="如：雅致粉" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs" />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">尺码大小</label>
-                      <input type="text" value={fdSize} onChange={e => setFdSize(e.target.value)} placeholder="如：80码 / 12码" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-mono" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section C: Problem description and manufacturer */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1 flex items-center gap-1">
-                    <span>3.</span> 缺陷大类 ＆ 厂工定责
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">缺陷瑕疵大项分类 *</label>
-                      <select 
-                        value={fdProblemType} 
-                        onChange={e => setFdProblemType(e.target.value)} 
-                        className="w-full bg-slate-50 border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-bold text-slate-700"
-                      >
-                        {PROBLEM_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">严重程度评判 *</label>
-                      <select 
-                        value={fdSeverity} 
-                        onChange={e => setFdSeverity(e.target.value as any)}
-                        className="w-full bg-slate-50 border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-bold text-slate-700"
-                      >
-                        {SEVERITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">品质缺陷描写 & 客服聊天实录 *</label>
-                    <textarea 
-                      required 
-                      rows={3} 
-                      value={fdProblemDesc} 
-                      onChange={e => setFdProblemDesc(e.target.value)} 
-                      placeholder="顾客反馈实意描述。例如：‘顾客反馈纯棉爬服过水缩水了整整两个身长，袖口也开了大毛口，极力退款赔钱...’" 
-                      className="w-full bg-slate-50 border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-semibold text-slate-800" 
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">判定主要责任方 *</label>
-                      <select 
-                        value={fdResponsibility} 
-                        onChange={e => setFdResponsibility(e.target.value as any)} 
-                        className="w-full bg-slate-50 border border-slate-200 outline-none rounded-lg p-2.5 text-xs font-bold text-slate-700"
-                      >
-                        {RESPONSIBILITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">定代代工厂厂字号</label>
-                      <select 
-                        value={fdSupplierId} 
-                        onChange={e => {
-                          const s = SUPPLIERS_OPTIONS.find(x => x.id === e.target.value);
-                          setFdSupplierId(e.target.value);
-                          setFdSupplierName(s ? s.name : "");
-                        }} 
-                        className="w-full bg-slate-50 border border-slate-205 outline-none rounded-lg p-2.5 text-xs font-bold text-slate-705"
-                      >
-                        {SUPPLIERS_OPTIONS.map(sup => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">出厂/上新批次</label>
-                      <input type="text" value={fdNewArrivalBatch} onChange={e => setFdNewArrivalBatch(e.target.value)} placeholder="如：2026春第一批" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs" />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">是否影响二次销售 *</label>
-                      <div className="flex gap-4 pt-2">
-                        {["是", "否", "不确定"].map((opt) => (
-                          <label key={opt} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                            <input 
-                              type="radio" 
-                              name="affect" 
-                              checked={fdAffectResale === opt} 
-                              onChange={() => setFdAffectResale(opt as any)} 
-                              className="accent-[#006591] w-4 h-4 cursor-pointer" 
-                            />
-                            {opt}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">理赔及后续处理结果详细备注</label>
-                    <input 
-                      type="text" 
-                      value={fdHandleResult} 
-                      onChange={e => setFdHandleResult(e.target.value)} 
-                      placeholder="如：‘已和供应商对接，决定从本月预付款直接减扣退款理赔总 ¥69’" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs" 
-                    />
-                  </div>
-                </div>
-
-                {/* Section D: Money & Status */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1 flex items-center gap-1">
-                    <span>4.</span> 理赔赔款 ＆ 工单状态
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">理赔退款额 (元)</label>
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        value={fdRefundAmount} 
-                        onChange={e => setFdRefundAmount(e.target.value === "" ? "" : Number(e.target.value))} 
-                        placeholder="客诉退货退款损失扣罚" 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-mono font-bold text-slate-900" 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">额外补偿金 (元)</label>
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        value={fdCompensationAmount} 
-                        onChange={e => setFdCompensationAmount(e.target.value === "" ? "" : Number(e.target.value))} 
-                        placeholder="给予买家的安抚微信红包/现金折扣" 
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-mono font-bold text-slate-900" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">对应处理状态 *</label>
-                      <select 
-                        value={fdStatus} 
-                        onChange={e => setFdStatus(e.target.value)} 
-                        className="w-full bg-slate-50 border border-[#006591] outline-none rounded-lg p-2.5 text-xs font-black text-[#006591]"
-                      >
-                        {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">是否需要代工跟进制程改进 *</label>
-                      <div className="flex gap-6 pt-2">
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                          <input type="radio" name="gys_follow" checked={fdNeedSupplierFollow === "是"} onChange={() => setFdNeedSupplierFollow("是")} className="accent-rose-500 w-4 h-4" />
-                          <span>是 (推送到供应商只读质量看板)</span>
-                        </label>
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                          <input type="radio" name="gys_follow" checked={fdNeedSupplierFollow === "否"} onChange={() => setFdNeedSupplierFollow("否")} className="accent-slate-400 w-4 h-4" />
-                          <span>否 (不通知)</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">是否计入内部质量统计 *</label>
-                      <div className="flex gap-6 pt-2">
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-705 cursor-pointer">
-                          <input type="radio" name="quality_stats" checked={fdIncludedInQualityStats === "是"} onChange={() => setFdIncludedInQualityStats("是")} className="accent-[#006591] w-4 h-4 hover:scale-105" />
-                          <span>是 (计入质量报盘)</span>
-                        </label>
-                        <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-705 cursor-pointer">
-                          <input type="radio" name="quality_stats" checked={fdIncludedInQualityStats === "否"} onChange={() => setFdIncludedInQualityStats("否")} className="accent-[#006591] w-4 h-4 hover:scale-105" />
-                          <span>否 (内部纠纷及常规退换)</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-slate-455 mb-1.5">客服特别备注</label>
-                      <input type="text" value={fdCustomerServiceRemark} onChange={e => setFdCustomerServiceRemark(e.target.value)} placeholder="多为特殊退款追踪" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section E: Image compress Uploading evidence */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1 flex items-center gap-1">
-                    <span>5.</span> 缺陷理赔佐证图片集 (最多6张)
+                {/* 1. 佐证与凭证图片集 (最多6张) - MOVED TO TOP */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-[#006591] rounded-full inline-block" />
+                    <span>1. 瑕疵理赔佐证图片集 (最多6张)</span>
                   </h3>
 
                   {/* Drag and click zone */}
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-200 hover:border-[#006591] rounded-2xl p-6 text-center bg-slate-50/50 hover:bg-slate-50 cursor-pointer select-none transition-all group"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center select-none transition-all group cursor-pointer ${
+                      isDragging 
+                        ? "border-emerald-400 bg-emerald-50/50 scale-[1.01]" 
+                        : "border-slate-200 hover:border-[#006591] bg-slate-50/50 hover:bg-slate-55"
+                    }`}
                   >
                     <input 
                       type="file" 
@@ -1594,19 +1288,23 @@ export default function ComplaintRegisterPage() {
                       onChange={handleImageFileChange} 
                       className="hidden" 
                     />
-                    <div className="w-10 h-10 rounded-full bg-[#006591]/10 text-[#006591] flex items-center justify-center mx-auto mb-2 text-lg group-hover:scale-110 transition-transform">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 text-lg transition-transform group-hover:scale-110 ${
+                      isDragging ? "bg-emerald-100 text-emerald-600" : "bg-[#006591]/10 text-[#006591]"
+                    }`}>
                       <ImageIcon className="w-5 h-5" />
                     </div>
-                    <span className="text-xs font-bold text-slate-805 block">单击此处或直接点击选择佐证图片</span>
+                    <span className="text-xs font-bold text-slate-800 block">
+                      {isDragging ? "松开鼠标即可极速上传佐证图片 !" : "点击选择 或 拖动图片到此处直接上传"}
+                    </span>
                     <p className="text-[10px] text-slate-400 mt-1">
-                      支持规范标准的 JPG, JPEG, PNG, WEBP。为了不卡顿网页并节约空间，单图由前端 Canvas **自动压缩最长边至 1600px ** 并转换为 WebP 排版！
+                      支持 JPG, JPEG, PNG, WEBP。前端 Canvas 自动对大图进行 WebP 极限损耗无感压缩，节省理赔响应时间！
                     </p>
                   </div>
 
                   {/* Existing LIVE Images in EDIT flow */}
                   {formMode === "edit" && activeComplaint && activeComplaint.images && activeComplaint.images.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-[11px] text-slate-450 block font-bold">📂 已上传理赔存案图片 ({activeComplaint.images.length}张)：</span>
+                      <span className="text-[10px] text-slate-450 block font-bold">📂 已上传理赔存案图片 ({activeComplaint.images.length}张)：</span>
                       <div className="grid grid-cols-4 gap-3">
                         {activeComplaint.images.map((img) => (
                           <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-slate-150 bg-slate-50 group">
@@ -1629,26 +1327,25 @@ export default function ComplaintRegisterPage() {
                   {/* Pending upload queues (showing compression metrics) */}
                   {imageQueue.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-[11px] text-[#006591] block font-bold">✨ 等待创单后发送的主动压缩队列 ({imageQueue.length}张)：</span>
+                      <span className="text-[10px] text-[#006591] block font-bold">✨ 即将随单上传的暂存压缩图片 ({imageQueue.length}张)：</span>
                       <div className="grid grid-cols-2 gap-3">
                         {imageQueue.map((item, idx) => {
                           const savings = ((1 - item.compressedSize / item.originalSize) * 100).toFixed(0);
                           return (
-                            <div key={idx} className="flex gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-150 relative group">
-                              <div className="w-12 h-12 bg-slate-200 rounded-lg overflow-hidden shrink-0">
+                            <div key={idx} className="flex gap-3 bg-white p-2 rounded-xl border border-slate-150 relative group">
+                              <div className="w-10 h-10 bg-slate-205 rounded-lg overflow-hidden shrink-0">
                                 <img src={item.previewUrl} alt="Compressed" className="w-full h-full object-cover" />
                               </div>
-                              <div className="text-[10px] space-y-0.5 truncate flex-grow">
+                              <div className="text-[9px] space-y-0.5 truncate flex-grow">
                                 <span className="font-bold text-slate-800 block truncate" title={item.file.name}>{item.file.name}</span>
-                                <span className="text-slate-450 block">原大：{formattedSize(item.originalSize)}</span>
                                 <span className="text-emerald-600 font-extrabold block">WebP：{formattedSize(item.compressedSize)} (-{savings}%)</span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => removeQueueImage(idx)}
-                                className="absolute top-2 right-2 p-1 bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-full border border-slate-150 cursor-pointer shadow-2xs"
+                                className="absolute top-1.5 right-1.5 p-1 bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-full border border-slate-155 cursor-pointer shadow-2xs"
                               >
-                                <XCircle className="w-4 h-4" />
+                                <XCircle className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           );
@@ -1656,7 +1353,429 @@ export default function ComplaintRegisterPage() {
                       </div>
                     </div>
                   )}
+                </div>
 
+                {/* Check warning duplicate order */}
+                {orderCheckWarning && formMode === "create" && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-rose-700">
+                      <strong className="block font-bold">🚨 订单历史重复客诉冲突警示：</strong>
+                      订单编号 (<span className="font-mono font-black underline">{fdOrderNo}</span>) 此前已有建档。请客服核实避免重复理赔扣罚！
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. 客服快捷核心登记 */}
+                <div className="space-y-4 pt-1 bg-[#fcfdff] border border-slate-150/60 p-4 rounded-xl">
+                  <h3 className="text-xs font-black text-[#006591] uppercase tracking-wider pb-1 flex items-center gap-1.5 border-b border-dashed border-slate-200">
+                    <span className="w-1.5 h-1.5 bg-[#006591] rounded-full inline-block" />
+                    <span>2. 客服极速登记表单（核心极简）</span>
+                  </h3>
+
+                  {/* Row A: Style selection and Order No */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
+                        1) 涉及瑕疵款号 * <span className="text-slate-400 font-normal shadow-2xs">(自动关联商品及厂家)</span>
+                      </label>
+                      <select 
+                        value={fdStyleNo} 
+                        required
+                        onChange={e => handleStyleNoChange(e.target.value)} 
+                        className="w-full bg-white border border-slate-250 outline-none rounded-lg p-2.5 text-xs font-mono font-bold text-slate-800 focus:ring-1 focus:ring-[#006591]"
+                      >
+                        <option value="">-- 请选择瑕疵爆款款号 --</option>
+                        <option value="LN-2026-CO">LN-2026-CO (精梳棉连体爬服 - 婴儿装)</option>
+                        <option value="LN-2026-BL">LN-2026-BL (防惊跳舒适婴儿睡袋)</option>
+                        <option value="LN-2026-SO">LN-2026-SO (新生儿防脱纯棉袜3组装)</option>
+                        <option value="LN-2026-HD">LN-2026-HD (复古蔷薇拼接连衣裙 - 大童装)</option>
+                        <option value="LN-2026-TS">LN-2026-TS (高弹小熊打底T恤)</option>
+                      </select>
+
+                      {/* Spark prefill feedback to give high-fidelity cues */}
+                      {fdStyleNo && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium max-w-full truncate">
+                            📦 {fdProductName || "加载中..."} • {fdColor || "默认"} • {fdSize || "默认"}
+                          </span>
+                          <span className="text-[10px] bg-sky-50 text-[#006591] px-1.5 py-0.5 rounded font-mono font-semibold">
+                            条码: {fdSkuCode}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-slate-700 mb-1">2) 平台订单编号 *</label>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          required 
+                          value={fdOrderNo} 
+                          onChange={e => setFdOrderNo(e.target.value ?? "")} 
+                          onBlur={handleOrderNoBlur}
+                          placeholder="粘贴或输入 16-20 位订单号" 
+                          className="w-full bg-white border border-slate-250 focus:border-[#006591] outline-none rounded-lg p-2.5 text-xs font-mono font-bold text-slate-800" 
+                        />
+                        {isCheckingOrder && <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin absolute right-3 top-3.5" />}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row B: Refund & Compensation */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-slate-700 mb-1">3) 理赔退款额 (元)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={fdRefundAmount} 
+                        onChange={e => setFdRefundAmount(e.target.value === "" ? "" : Number(e.target.value))} 
+                        placeholder="客服退货退款损失扣罚" 
+                        className="w-full bg-white border border-slate-250 rounded-lg p-2.5 text-xs font-mono font-bold text-slate-900 focus:ring-1 focus:ring-[#006591]" 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-slate-700 mb-1">4) 额外补偿金 (元) <span className="text-slate-400 font-normal">(选填)</span></label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={fdCompensationAmount} 
+                        onChange={e => setFdCompensationAmount(e.target.value === "" ? "" : Number(e.target.value))} 
+                        placeholder="微信安抚红包或现金折让" 
+                        className="w-full bg-white border border-slate-250 rounded-lg p-2.5 text-xs font-mono font-bold text-slate-900 focus:ring-1 focus:ring-[#006591]" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row C: Problem description with Quick Pre-fills */}
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-slate-700 mb-1.5 flex justify-between items-center">
+                      <span>5) 品质缺陷描写 & 客户投诉实录 *</span>
+                      <span className="text-[10px] text-slate-400 font-normal">点击下方标签可一键极速起草填入</span>
+                    </label>
+                    
+                    {/* Textarea */}
+                    <textarea 
+                      required 
+                      rows={3} 
+                      value={fdProblemDesc} 
+                      onChange={e => setFdProblemDesc(e.target.value)} 
+                      placeholder="请详细描述买家反馈之破绽、污斑或其它品质问题..." 
+                      className="w-full bg-white border border-slate-250 outline-none rounded-lg p-2.5 text-xs font-medium text-slate-800 focus:ring-1 focus:ring-[#006591]" 
+                    />
+
+                    {/* Quick Prefill Templates */}
+                    <div className="mt-2 text-left">
+                      <span className="text-[10px] text-slate-400 font-bold block mb-1">🏷️ 爆款客服常用理赔速记词模组：</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          "面料缝线开裂、破洞，严重车缝重大瑕疵",
+                          "过水缩水变硬起球严重，影响日常穿着",
+                          "爆线开裆、脱线，局部针脚不严密漏缝",
+                          "胶印图案水洗脱落，花纹参差不齐",
+                          "左右边/袖长不均，尺寸极度不对称",
+                          "拉链损坏卡阻，有咬肉划伤风险",
+                          "面料有黑色不规整污垢与异味"
+                        ].map((phrase, pi) => (
+                          <button
+                            key={pi}
+                            type="button"
+                            onClick={() => {
+                              if (!fdProblemDesc.trim()) {
+                                setFdProblemDesc(phrase);
+                              } else {
+                                // check if already ends with comma/period
+                                const endsWithPunct = /[，。,.！!]$/.test(fdProblemDesc);
+                                setFdProblemDesc(prev => prev + (endsWithPunct ? "" : "，") + phrase);
+                              }
+                              showToast("⚡ 已快捷填充速填词");
+                            }}
+                            className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition border border-slate-200/50 cursor-pointer select-none font-semibold"
+                          >
+                            + {phrase.split("，")[0].substring(0, 8)}...
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. COLLAPSIBLE ADVANCED DETAILS AREA */}
+                <div id="advanced-optional-fields-container" className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="w-full py-2.5 px-3.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 transition cursor-pointer select-none"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Settings className="w-3.5 h-3.5 text-slate-450" />
+                      <span>{showAdvanced ? "📂 折叠精细次要字段（全部在库，非必看）" : "⚙️ 展开更多次要/核查属性（默认已智能预设，无需手动输入）"}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      {showAdvanced ? "收起次要要素" : "展开修改平台/出厂批次/流向定责"}
+                    </span>
+                  </button>
+
+                  <AnimatePresence>
+                    {showAdvanced && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden space-y-4 border border-slate-200 p-4 rounded-xl bg-slate-50/30"
+                      >
+                        
+                        {/* Section Sub-A: Platform channel */}
+                        <div className="space-y-3 border-b border-slate-150 pb-3">
+                          <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-wider">A. 受理平台与店铺渠道</h4>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">投诉处理登记日期 *</label>
+                              <input 
+                                type="date" 
+                                required
+                                value={fdComplaintDate} 
+                                onChange={e => setFdComplaintDate(e.target.value)} 
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs font-mono font-bold text-slate-800" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">受理平台 *</label>
+                              <select 
+                                value={fdPlatform} 
+                                onChange={e => setFdPlatform(e.target.value as any)} 
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs font-bold text-slate-700"
+                              >
+                                {PLATFORM_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">受理店铺名称 *</label>
+                              <select 
+                                value={fdShopCode} 
+                                onChange={e => setFdShopCode(e.target.value)} 
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs font-bold text-slate-700"
+                              >
+                                {SHOP_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">逆向申请售后单号</label>
+                              <input 
+                                type="text" 
+                                value={fdAfterSaleNo} 
+                                onChange={e => setFdAfterSaleNo(e.target.value)} 
+                                placeholder="多为逆向系统生成的 AS- 售后号" 
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs font-mono text-slate-800" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">客户旺旺/抖音昵称</label>
+                              <input 
+                                type="text" 
+                                value={fdCustomerNickname} 
+                                onChange={e => setFdCustomerNickname(e.target.value)} 
+                                placeholder="方便日常回核关联" 
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs text-slate-800" 
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section Sub-B: Factory Sourcing & responsibility */}
+                        <div className="space-y-3 border-b border-slate-150 pb-3">
+                          <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-wider">B. 瑕疵定责与供应链追溯</h4>
+                          
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">瑕疵类型分类 *</label>
+                              <select 
+                                value={fdProblemType} 
+                                onChange={e => setFdProblemType(e.target.value)} 
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs font-bold text-slate-700"
+                              >
+                                {PROBLEM_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">严重程度系数 *</label>
+                              <select 
+                                value={fdSeverity} 
+                                onChange={e => setFdSeverity(e.target.value as any)}
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs font-bold text-[#006591]"
+                              >
+                                {SEVERITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">判定首要责任方 *</label>
+                              <select 
+                                value={fdResponsibility} 
+                                onChange={e => setFdResponsibility(e.target.value as any)} 
+                                className="w-full bg-white border border-slate-200 outline-none rounded-md p-2 text-xs font-bold text-slate-700"
+                              >
+                                {RESPONSIBILITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">对口代工厂商名</label>
+                              <select 
+                                value={fdSupplierId} 
+                                onChange={e => {
+                                  const s = SUPPLIERS_OPTIONS.find(x => x.id === e.target.value);
+                                  setFdSupplierId(e.target.value);
+                                  setFdSupplierName(s ? s.name : "");
+                                }} 
+                                className="w-full bg-white border border-slate-205 outline-none rounded-md p-2 text-xs font-bold text-slate-705"
+                              >
+                                {SUPPLIERS_OPTIONS.map(sup => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">生产/出厂批次</label>
+                              <input 
+                                type="text" 
+                                value={fdNewArrivalBatch} 
+                                onChange={e => setFdNewArrivalBatch(e.target.value)} 
+                                placeholder="例如：2026春第一批" 
+                                className="w-full bg-white border border-slate-200 rounded-md p-2 text-xs text-slate-800" 
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 pt-1">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">是否影响商品二次销售 *</label>
+                              <div className="flex gap-4 pt-1">
+                                {["是", "否", "不确定"].map((opt) => (
+                                  <label key={opt} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                                    <input 
+                                      type="radio" 
+                                      name="affect" 
+                                      checked={fdAffectResale === opt} 
+                                      onChange={() => setFdAffectResale(opt as any)} 
+                                      className="accent-[#006591] w-4 h-4 cursor-pointer" 
+                                    />
+                                    {opt}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">需要代工厂制程跟进 *</label>
+                              <div className="flex gap-4 pt-1">
+                                <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                                  <input type="radio" name="gys_follow" checked={fdNeedSupplierFollow === "是"} onChange={() => setFdNeedSupplierFollow("是")} className="accent-rose-500 w-4 h-4" />
+                                  <span>需要 (同步至代工厂看板)</span>
+                                </label>
+                                <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                                  <input type="radio" name="gys_follow" checked={fdNeedSupplierFollow === "否"} onChange={() => setFdNeedSupplierFollow("否")} className="accent-slate-400 w-4 h-4" />
+                                  <span>免签 (常规处理)</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section Sub-C: Internal details and specs */}
+                        <div className="space-y-3">
+                          <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-wider">C. 赔付追踪与高级配置 (物料快照)</h4>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">商品入账状态选择 *</label>
+                              <select 
+                                value={fdStatus} 
+                                onChange={e => setFdStatus(e.target.value)} 
+                                className="w-full bg-white border border-[#006591] outline-none rounded-md p-2 text-xs font-black text-[#006591]"
+                              >
+                                {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">计入精细化质量报盘 *</label>
+                              <div className="flex gap-4 pt-1">
+                                <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-705 cursor-pointer">
+                                  <input type="radio" name="quality_stats" checked={fdIncludedInQualityStats === "是"} onChange={() => setFdIncludedInQualityStats("是")} className="accent-[#006591] w-4 h-4" />
+                                  <span>入账核销计入</span>
+                                </label>
+                                <label className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-705 cursor-pointer">
+                                  <input type="radio" name="quality_stats" checked={fdIncludedInQualityStats === "否"} onChange={() => setFdIncludedInQualityStats("否")} className="accent-[#006591] w-4 h-4" />
+                                  <span>免于扣发计入</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                          <div className="grid grid-cols-2 gap-3 font-mono">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">关联商品名称 (高级)</label>
+                              <input 
+                                type="text" 
+                                required
+                                value={fdProductName} 
+                                onChange={e => setFdProductName(e.target.value)} 
+                                className="w-full bg-white border border-slate-205 outline-none rounded-md p-2 text-xs text-slate-600 font-bold" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">商品条码 SKU Code (高级)</label>
+                              <input 
+                                type="text" 
+                                required
+                                value={fdSkuCode} 
+                                onChange={e => setFdSkuCode(e.target.value)} 
+                                className="w-full bg-white border border-slate-205 outline-none rounded-md p-2 text-xs text-slate-600 font-bold" 
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 font-mono">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">颜色规格码 (高级)</label>
+                              <input type="text" value={fdColor} onChange={e => setFdColor(e.target.value)} className="w-full bg-white border border-slate-200 rounded-md p-2 text-xs" />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">出厂尺码规格 (高级)</label>
+                              <input type="text" value={fdSize} onChange={e => setFdSize(e.target.value)} className="w-full bg-white border border-slate-200 rounded-md p-2 text-xs" />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 font-mono">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">理赔及后续处理结果详细备注</label>
+                              <input 
+                                type="text" 
+                                value={fdHandleResult} 
+                                onChange={e => setFdHandleResult(e.target.value)} 
+                                placeholder="如：‘已和供应商对接决议此单扣款罚金’" 
+                                className="w-full bg-white border border-slate-200 rounded-md p-2 text-xs text-slate-800 font-semibold" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">客服内部追踪备注 (特殊跟进)</label>
+                              <input 
+                                type="text" 
+                                value={fdCustomerServiceRemark} 
+                                onChange={e => setFdCustomerServiceRemark(e.target.value)} 
+                                placeholder="多为极特殊退款的标记" 
+                                className="w-full bg-white border border-slate-200 rounded-md p-2 text-xs text-[#002045]/85 font-semibold" 
+                              />
+                            </div>
+                          </div>
+
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Submissions button layout */}
@@ -1673,14 +1792,13 @@ export default function ComplaintRegisterPage() {
                   <button 
                     type="button" 
                     onClick={() => setIsFormOpen(false)} 
-                    className="py-3 px-6 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold rounded-xl cursor-pointer"
+                    className="py-3 px-6 border border-slate-200 hover:bg-slate-55 text-slate-600 text-xs font-bold rounded-xl cursor-pointer"
                   >
                     取消
                   </button>
                 </div>
 
               </form>
-
             </motion.div>
           </>
         )}

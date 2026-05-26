@@ -35,7 +35,7 @@ export default function CashflowTable({
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   // Reset page when records list changes
   React.useEffect(() => {
@@ -350,7 +350,6 @@ export default function CashflowTable({
               }}
               className="px-2 py-1 bg-white border border-slate-250 rounded font-semibold text-slate-600 text-xs focus:ring-1 focus:ring-[#006591] focus:outline-none cursor-pointer"
             >
-              <option value={5}>5 条</option>
               <option value={10}>10 条</option>
               <option value={20}>20 条</option>
               <option value={50}>50 条</option>

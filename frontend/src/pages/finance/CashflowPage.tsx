@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { 
   Building2, Plus, LayoutGrid, FileSpreadsheet, Download, RefreshCw, AlertCircle,
-  Layers
+  Layers, TrendingUp, TrendingDown, Coins, PieChart
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { CashflowRecord, CashflowSummary, FundAccount, CashflowCategory } from "@shared/types";
@@ -321,6 +321,69 @@ export default function CashflowPage() {
     };
   }, [computedCashflows, summary]);
 
+  // Real-time statistics summary for the current filtered slate of listings
+  const filteredListStats = useMemo(() => {
+    let incomeCount = 0;
+    let expenseCount = 0;
+    let transferCount = 0;
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let draftCount = 0;
+    let draftAmount = 0;
+    let confirmedCount = 0;
+    let confirmedAmount = 0;
+    let lockedCount = 0;
+    let lockedAmount = 0;
+
+    computedCashflows.forEach((rec) => {
+      const amount = rec.amount || 0;
+      if (rec.direction === "income") {
+        incomeCount++;
+        totalIncome += amount;
+      } else if (rec.direction === "expense") {
+        expenseCount++;
+        totalExpense += amount;
+      } else if (rec.direction === "transfer") {
+        transferCount++;
+      }
+
+      if (rec.status === "draft") {
+        draftCount++;
+        draftAmount += amount;
+      } else if (rec.status === "confirmed") {
+        confirmedCount++;
+        confirmedAmount += amount;
+      } else if (rec.status === "locked") {
+        lockedCount++;
+        lockedAmount += amount;
+      }
+    });
+
+    const netFlow = totalIncome - totalExpense;
+    const totalCount = computedCashflows.length;
+    
+    const avgIncome = incomeCount > 0 ? totalIncome / incomeCount : 0;
+    const avgExpense = expenseCount > 0 ? totalExpense / expenseCount : 0;
+
+    return {
+      incomeCount,
+      expenseCount,
+      transferCount,
+      totalIncome,
+      totalExpense,
+      netFlow,
+      totalCount,
+      avgIncome,
+      avgExpense,
+      draftCount,
+      draftAmount,
+      confirmedCount,
+      confirmedAmount,
+      lockedCount,
+      lockedAmount
+    };
+  }, [computedCashflows]);
+
   // Handlers
   const handleFilterSearch = (params: FilterParams) => {
     setFilterParams(params);
@@ -544,14 +607,8 @@ export default function CashflowPage() {
         </div>
       </div>
 
-      {/* Primary KPI summary card component */}
-      {computedSummary ? (
-        <CashflowSummaryCards summary={computedSummary} />
-      ) : (
-        <div className="h-28 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 text-xs">
-          正在计算最新账户合并资金余额，请稍等...
-        </div>
-      )}
+      {/* Primary KPI summary card component is hidden per user request */}
+      {false && computedSummary && <CashflowSummaryCards summary={computedSummary} />}
 
       {/* Active Linkage Banner Panel */}
       {activeLinkParams && (
@@ -646,6 +703,117 @@ export default function CashflowPage() {
             onBatchConfirm={handleBatchConfirm}
             onBatchDelete={handleBatchDelete}
           />
+
+          {/* Real-time filtered data statistics panel */}
+          <div id="filtered-cashflow-stats" className="mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="space-y-0.5">
+                <h3 className="text-xs md:text-sm font-black text-[#002045] flex items-center gap-2">
+                  <PieChart className="w-4 h-4 text-[#006591]" />
+                  <span>等值流水数据核算统计 (当前列表)</span>
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  数据基于当前筛选器检索出的 <strong className="text-slate-600 font-mono">{filteredListStats.totalCount}</strong> 笔流水细项进行智能实时归集核算
+                </p>
+              </div>
+              <span className="self-start sm:self-auto text-[9px] font-black uppercase text-[#006591] tracking-wider px-2 py-0.5 bg-sky-50 border border-sky-100 rounded">
+                Live Data Summary
+              </span>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Total Income Card */}
+              <div className="p-4 bg-emerald-50/30 border border-emerald-100 rounded-lg flex items-start justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-emerald-700 font-bold block">累计总收入 (+)</span>
+                  <span className="text-base md:text-lg font-black text-emerald-600 font-mono block">
+                    ¥{filteredListStats.totalIncome.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium block">
+                    共 <strong className="font-mono font-bold text-emerald-650">{filteredListStats.incomeCount}</strong> 笔收入 • 平均单笔 ¥{filteredListStats.avgIncome.toLocaleString("zh-CN", { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <div className="p-1.5 bg-emerald-100/50 text-emerald-600 rounded">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Total Expense Card */}
+              <div className="p-4 bg-rose-50/30 border border-rose-100 rounded-lg flex items-start justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-rose-700 font-bold block">累计总支出 (-)</span>
+                  <span className="text-base md:text-lg font-black text-rose-500 font-mono block">
+                    -¥{filteredListStats.totalExpense.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium block">
+                    共 <strong className="font-mono font-bold text-rose-650">{filteredListStats.expenseCount}</strong> 笔支出 • 平均单笔 ¥{filteredListStats.avgExpense.toLocaleString("zh-CN", { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <div className="p-1.5 bg-rose-100/50 text-rose-500 rounded">
+                  <TrendingDown className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Net Flow Card */}
+              <div className={`p-4 border rounded-lg flex items-start justify-between ${
+                filteredListStats.netFlow >= 0 
+                  ? "bg-slate-50/50 border-slate-200" 
+                  : "bg-red-50/20 border-red-100"
+              }`}>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold block">区间收支差额 / 盈余</span>
+                  <span className={`text-base md:text-lg font-black font-mono block ${
+                    filteredListStats.netFlow >= 0 ? "text-slate-850" : "text-rose-600"
+                  }`}>
+                    {filteredListStats.netFlow >= 0 ? "+" : ""}
+                    {filteredListStats.netFlow.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium block">
+                    累计内部转账 <strong className="font-mono font-bold text-slate-600">{filteredListStats.transferCount}</strong> 笔
+                  </span>
+                </div>
+                <div className="p-1.5 bg-slate-100 text-slate-500 rounded font-bold">
+                  <Coins className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Status Breakdown Card */}
+              <div className="p-4 bg-sky-50/20 border border-sky-100 rounded-lg flex items-start justify-between">
+                <div className="space-y-1.5 w-full">
+                  <span className="text-[10px] text-indigo-700 font-bold block">入账对账状态归集</span>
+                  
+                  <div className="space-y-1 text-[10px] text-slate-500 font-semibold leading-relaxed">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                        <span>已确有过账</span>
+                      </span>
+                      <strong className="text-slate-700 font-mono">{filteredListStats.confirmedCount}笔 (¥{filteredListStats.confirmedAmount.toLocaleString("zh-CN", { maximumFractionDigits: 0 })})</strong>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block" />
+                        <span>月结已锁定</span>
+                      </span>
+                      <strong className="text-slate-700 font-mono">{filteredListStats.lockedCount}笔 (¥{filteredListStats.lockedAmount.toLocaleString("zh-CN", { maximumFractionDigits: 0 })})</strong>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
+                        <span>草稿待审核</span>
+                      </span>
+                      <strong className="text-slate-700 font-mono">{filteredListStats.draftCount}笔 (¥{filteredListStats.draftAmount.toLocaleString("zh-CN", { maximumFractionDigits: 0 })})</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
       )}
 
