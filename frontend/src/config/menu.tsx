@@ -48,6 +48,6 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     title: "系统设置",
     icon: <Settings className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["用户管理", "供应商账号管理", "角色权限配置", "供应商工作台"]
+    submenus: ["用户管理", "供应商账号管理", "角色权限配置"]
   }
 ];

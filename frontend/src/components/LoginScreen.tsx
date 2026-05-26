@@ -7,15 +7,28 @@ import React, { useState } from "react";
 import { Mail, Lock, LogIn, Check, AlertCircle } from "lucide-react";
 
 interface LoginScreenProps {
-  onLoginSuccess: (email: string) => void;
+  onLoginSuccess: (email: string, role: "employee" | "supplier") => void;
 }
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+  const [role, setRole] = useState<"employee" | "supplier">("employee");
   const [email, setEmail] = useState("service@lenakids.com");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleRoleChange = (newRole: "employee" | "supplier") => {
+    setRole(newRole);
+    setError(null);
+    if (newRole === "employee") {
+      setEmail("service@lenakids.com");
+      setPassword("");
+    } else {
+      setEmail("gys@lenakids.com");
+      setPassword("gys");
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,13 +37,23 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     
     // Simulate a fast enterprise authentication loading bar
     setTimeout(() => {
-      if (password !== "lena") {
+      if (role === "employee") {
+        if (password !== "lena") {
+          setIsLoggingIn(false);
+          setError("公司员工密码错误，请检查后重试。");
+          return;
+        }
         setIsLoggingIn(false);
-        setError("密码错误，请输入正确的密码。");
-        return;
+        onLoginSuccess(email, "employee");
+      } else {
+        if (email !== "gys@lenakids.com" || password !== "gys") {
+          setIsLoggingIn(false);
+          setError("供应商账号或密码错误，请检查后重试。");
+          return;
+        }
+        setIsLoggingIn(false);
+        onLoginSuccess(email, "supplier");
       }
-      setIsLoggingIn(false);
-      onLoginSuccess(email);
     }, 1200);
   };
 
@@ -113,8 +136,34 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               欢迎回来
             </h2>
             <p className="text-sm text-[#43474e]">
-              请登录您的企业账户以继续
+              请选择身份并登录您的企业账户
             </p>
+          </div>
+
+          {/* Role Segmented Selector */}
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleRoleChange("employee")}
+              className={`flex-1 py-2.5 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                role === "employee"
+                  ? "bg-[#002045] text-white shadow-sm font-extrabold"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50/50"
+              }`}
+            >
+              🏢 企业成员登录
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRoleChange("supplier")}
+              className={`flex-1 py-2.5 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                role === "supplier"
+                  ? "bg-[#002045] text-white shadow-sm font-extrabold"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50/50"
+              }`}
+            >
+              🤝 供应商用户登录
+            </button>
           </div>
 
           {/* Form */}
@@ -122,7 +171,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             {/* Email Field */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#43474e]">
-                工作邮箱
+                {role === "employee" ? "工作邮箱" : "工作邮箱 / 供应商账号"}
               </label>
               <div className="relative rounded-lg shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -163,7 +212,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(null); }}
                   className="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006591] focus:border-transparent transition-all duration-150 font-mono"
-                  placeholder="请输入登录密码"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
@@ -206,7 +255,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </>
               ) : (
                 <>
-                  <span>登录系统</span>
+                  <span>{role === "employee" ? "登录系统" : "进入供应商工作台"}</span>
                   <LogIn className="h-4.5 w-4.5" />
                 </>
               )}
@@ -227,7 +276,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <button
               onClick={() => {
                 setIsLoggingIn(true);
-                setTimeout(() => { setIsLoggingIn(false); onLoginSuccess("wechat@lenakids.com"); }, 900);
+                setTimeout(() => { setIsLoggingIn(false); onLoginSuccess("wechat@lenakids.com", "employee"); }, 900);
               }}
               className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-[#0b1c30] hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
             >
@@ -237,7 +286,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <button
               onClick={() => {
                 setIsLoggingIn(true);
-                setTimeout(() => { setIsLoggingIn(false); onLoginSuccess("dingtalk@lenakids.com"); }, 900);
+                setTimeout(() => { setIsLoggingIn(false); onLoginSuccess("dingtalk@lenakids.com", "employee"); }, 900);
               }}
               className="flex items-center justify-center space-x-2 py-2.5 border border-slate-200 bg-white rounded-lg text-xs font-bold text-[#0b1c30] hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
             >

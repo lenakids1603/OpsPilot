@@ -7,13 +7,18 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import LoginScreen from "./components/LoginScreen";
 import DashboardLayout from "./layouts/DashboardLayout";
+import SupplierPortalLayout from "./layouts/SupplierPortalLayout";
+
+type UserRole = "employee" | "supplier";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [userRole, setUserRole] = useState<UserRole>("employee");
 
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = (email: string, role: UserRole) => {
     setUserEmail(email);
+    setUserRole(role);
     setIsLoggedIn(true);
   };
 
@@ -35,7 +40,7 @@ export default function App() {
           >
             <LoginScreen onLoginSuccess={handleLoginSuccess} />
           </motion.div>
-        ) : (
+        ) : userRole === "employee" ? (
           <motion.div
             key="dashboard"
             initial={{ opacity: 0 }}
@@ -44,6 +49,16 @@ export default function App() {
             transition={{ duration: 0.35 }}
           >
             <DashboardLayout userEmail={userEmail} onLogout={handleLogout} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="supplier-portal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <SupplierPortalLayout userEmail={userEmail} onLogout={handleLogout} />
           </motion.div>
         )}
       </AnimatePresence>

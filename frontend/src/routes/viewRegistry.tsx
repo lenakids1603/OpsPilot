@@ -91,7 +91,6 @@ export function renderRegisteredView(selectedParent: string, selectedSub: string
     if (selectedSub === "用户管理") return <UserManagementPage />;
     if (selectedSub === "供应商账号管理") return <SupplierAccountPage />;
     if (selectedSub === "角色权限配置") return <RolePermissionsPage />;
-    if (selectedSub === "供应商工作台") return <SupplierWorkspacePage />;
   }
 
   // Fallback safely

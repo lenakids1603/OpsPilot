@@ -19,7 +19,12 @@ interface SubSKU {
   colorHex: string; // Used to render real visual clothes mock
 }
 
-export default function SupplierWorkspacePage() {
+export interface SupplierWorkspacePageProps {
+  userEmail?: string;
+  onLogout?: () => void;
+}
+
+export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierWorkspacePageProps = {}) {
   const [activeTab, setActiveTab] = useState("工作台");
   const [searchSKU, setSearchSKU] = useState("");
   
@@ -123,16 +128,19 @@ export default function SupplierWorkspacePage() {
         <div className="flex items-center justify-between w-full md:w-auto gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-100 bg-slate-50/55 text-[10.5px]">
             <div className="w-5.5 h-5.5 rounded-full bg-indigo-100 text-indigo-700 font-extrabold flex items-center justify-center text-[9px]">
-              张
+              {userEmail ? userEmail.slice(0, 1).toUpperCase() : "张"}
             </div>
             <div>
-              <span className="font-bold text-slate-705 block leading-tight">张经理</span>
-              <span className="text-[8.5px] text-emerald-600 block leading-none font-medium mt-0.5">账号已启用</span>
+              <span className="font-bold text-slate-705 block leading-tight">{userEmail || "张经理"}</span>
+              <span className="text-[8.5px] text-emerald-600 block leading-none font-medium mt-0.5">
+                {userEmail === "gys@lenakids.com" ? "供应商特权模式" : "账号已启用"}
+              </span>
             </div>
           </div>
           <button 
-            disabled
-            className="p-2 text-slate-350 bg-slate-100 border border-slate-200 rounded-xl leading-none"
+            onClick={onLogout}
+            disabled={!onLogout}
+            className={`p-2 rounded-xl leading-none ${onLogout ? "text-rose-600 bg-rose-50 border border-rose-205 hover:bg-rose-100 cursor-pointer" : "text-slate-350 bg-slate-100 border border-slate-200"}`}
             title="退出提报程序"
           >
             <LogOut className="w-4 h-4" />
