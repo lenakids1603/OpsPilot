@@ -773,10 +773,11 @@ export default function SupplierBillAuditPage() {
           <>
             <div onClick={() => setShowPayModal(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs z-[130]" />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="fixed top-32 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border border-slate-100 rounded-2xl shadow-2xl z-[140] p-6 text-slate-700"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.3 }}
+              className="fixed inset-y-0 right-0 w-full max-w-md bg-white border-l border-slate-200 shadow-2xl z-[140] p-6 text-slate-700 flex flex-col overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 select-none">
                 <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
@@ -879,10 +880,11 @@ export default function SupplierBillAuditPage() {
           <>
             <div onClick={() => { setShowBillImportModal(false); setUploadedFile(null); }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs z-[130]" />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="fixed top-28 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border border-slate-100 rounded-2xl shadow-2xl z-[140] p-6 text-slate-700"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.3 }}
+              className="fixed inset-y-0 right-0 w-full max-w-lg bg-white border-l border-slate-200 shadow-2xl z-[140] p-6 text-slate-700 flex flex-col overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4 select-none">
                 <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
@@ -985,10 +987,11 @@ export default function SupplierBillAuditPage() {
           <>
             <div onClick={() => { setShowInboundImportModal(false); setUploadedFile(null); }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-3xs z-[130]" />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className="fixed top-28 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border border-slate-100 rounded-2xl shadow-2xl z-[140] p-6 text-slate-700"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.3 }}
+              className="fixed inset-y-0 right-0 w-full max-w-lg bg-white border-l border-slate-200 shadow-2xl z-[140] p-6 text-slate-700 flex flex-col overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4 select-none">
                 <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">

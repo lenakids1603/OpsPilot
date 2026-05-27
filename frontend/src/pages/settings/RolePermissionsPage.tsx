@@ -392,7 +392,7 @@ export default function RolePermissionsPage() {
       {/* Dialog creation modal */}
       <AnimatePresence>
         {addRoleOpen && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[120] flex items-center justify-end p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -404,10 +404,11 @@ export default function RolePermissionsPage() {
 
             {/* Card modal body */}
             <motion.div
-              initial={{ scale: 0.95, opacity: 0.9 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0.9 }}
-              className="relative w-full max-w-sm bg-white border border-slate-100 rounded-2xl p-6 shadow-2xl space-y-4"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.3 }}
+              className="relative w-full max-w-sm bg-white border-l border-slate-200 h-full shadow-2xl p-6 text-xs flex flex-col justify-between"
             >
               <div className="pb-1 border-b border-slate-50">
                 <h5 className="font-black text-slate-800 text-[13.5px]">增加自定义业务角色</h5>

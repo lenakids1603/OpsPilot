@@ -19,6 +19,11 @@ interface DashboardLayoutProps {
   onLogout: () => void;
 }
 
+export interface OpenTab {
+  parent: string;
+  sub: string;
+}
+
 export default function DashboardLayout({ userEmail, onLogout }: DashboardLayoutProps) {
   // Navigation states
   const [selectedParent, setSelectedParent] = useState<string>("Dashboard");
@@ -27,6 +32,55 @@ export default function DashboardLayout({ userEmail, onLogout }: DashboardLayout
     "Dashboard": true
   });
   
+  // Open tabs state modeled after Jushuitan ERP
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>([
+    { parent: "Dashboard", sub: "经营首页" }
+  ]);
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(0);
+
+  // Sync openTabs & activeTabIndex when selectedParent & selectedSub changes
+  useEffect(() => {
+    setOpenTabs(prev => {
+      const idx = prev.findIndex(t => t.parent === selectedParent && t.sub === selectedSub);
+      if (idx !== -1) {
+        setActiveTabIndex(idx);
+        return prev;
+      } else {
+        const newTabs = [...prev, { parent: selectedParent, sub: selectedSub }];
+        setActiveTabIndex(newTabs.length - 1);
+        return newTabs;
+      }
+    });
+  }, [selectedParent, selectedSub]);
+
+  // Sync selectedParent and selectedSub when activeTabIndex or openTabs changes
+  useEffect(() => {
+    const activeTab = openTabs[activeTabIndex];
+    if (activeTab) {
+      if (selectedParent !== activeTab.parent || selectedSub !== activeTab.sub) {
+        setSelectedParent(activeTab.parent);
+        setSelectedSub(activeTab.sub);
+      }
+    }
+  }, [activeTabIndex, openTabs]);
+
+  const handleCloseTab = (index: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (index === 0) return; // permanent first tab
+
+    const newTabs = openTabs.filter((_, i) => i !== index);
+    let nextIndex = activeTabIndex;
+
+    if (activeTabIndex === index) {
+      nextIndex = Math.max(0, index - 1);
+    } else if (activeTabIndex > index) {
+      nextIndex = activeTabIndex - 1;
+    }
+
+    setOpenTabs(newTabs);
+    setActiveTabIndex(nextIndex);
+  };
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const toggleMenu = () => setIsMenuOpen(prev => !prev);
   const closeMenu = () => setIsMenuOpen(false);
@@ -261,8 +315,10 @@ export default function DashboardLayout({ userEmail, onLogout }: DashboardLayout
         
         {/* Responsive Header (Top bar) */}
         <TopHeader 
-          selectedParent={selectedParent}
-          selectedSub={selectedSub}
+          tabs={openTabs}
+          activeTabIndex={activeTabIndex}
+          onSelectTab={(idx) => setActiveTabIndex(idx)}
+          onCloseTab={handleCloseTab}
           currentTime={currentTime}
           currentDate={currentDate}
           toggleMenu={toggleMenu}

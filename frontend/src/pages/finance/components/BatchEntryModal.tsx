@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Trash2, PlusCircle, LayoutGrid, CheckCircle2, AlertTriangle, Lightbulb } from "lucide-react";
 import { CashflowRecord, FundAccount, CashflowCategory } from "@shared/types";
 
@@ -59,8 +60,6 @@ export default function BatchEntryModal({
       errors: {}
     };
   }
-
-  if (!isOpen) return null;
 
   const handleAddRow = () => {
     setRows(prev => [...prev, createEmptyRow()]);
@@ -157,12 +156,29 @@ export default function BatchEntryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-x-hidden font-sans">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={onClose} />
+    <AnimatePresence>
+      {isOpen && (
+        <div id="batch-entry-drawer-container" className="fixed inset-0 z-50 overflow-hidden font-sans">
+          {/* Backdrop */}
+          <motion.div
+            id="batch-entry-drawer-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+            onClick={onClose}
+          />
 
-      {/* Frame content */}
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[85vh] flex flex-col relative z-10 overflow-hidden">
+          <div className="absolute inset-y-0 right-0 max-w-full pl-10 flex">
+            <motion.div
+              id="batch-entry-drawer-content"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.3 }}
+              className="w-screen max-w-6xl bg-white shadow-2xl flex flex-col justify-between"
+            >
         
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -392,7 +408,10 @@ export default function BatchEntryModal({
           </div>
         </div>
 
-      </div>
-    </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

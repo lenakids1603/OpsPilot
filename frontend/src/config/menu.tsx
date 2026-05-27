@@ -5,7 +5,7 @@
 
 import React from "react";
 import { 
-  LayoutDashboard, Wallet, Users, Boxes, Headphones, Database, Settings
+  LayoutDashboard, Wallet, Users, Boxes, Headphones, Database, Settings, Warehouse
 } from "lucide-react";
 
 export interface MenuItem {
@@ -21,9 +21,14 @@ export const MENU_ITEMS: MenuItem[] = [
     submenus: ["经营首页"]
   },
   {
+    title: "仓库系统",
+    icon: <Warehouse className="w-4.5 h-4.5 flex-shrink-0" />,
+    submenus: ["到货登记"]
+  },
+  {
     title: "财务系统",
     icon: <Wallet className="w-4.5 h-4.5 flex-shrink-0" />,
-    submenus: ["财务总览", "公司资金流水", "到货核对中心", "供应商账单核对", "票务管理", "个体户账户管理", "额度预警"]
+    submenus: ["财务总览", "公司资金流水", "供应商账单核对", "票务管理", "个体户账户管理", "额度预警"]
   },
   {
     title: "供应商系统",

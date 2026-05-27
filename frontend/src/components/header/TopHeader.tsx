@@ -4,19 +4,28 @@
  */
 
 import React from "react";
-import { ShieldCheck, HelpCircle, Menu } from "lucide-react";
+import { ShieldCheck, HelpCircle, Menu, X, Home } from "lucide-react";
+
+export interface OpenTab {
+  parent: string;
+  sub: string;
+}
 
 interface TopHeaderProps {
-  selectedParent: string;
-  selectedSub: string;
+  tabs: OpenTab[];
+  activeTabIndex: number;
+  onSelectTab: (index: number) => void;
+  onCloseTab: (index: number, event: React.MouseEvent) => void;
   currentTime: string;
   currentDate: string;
   toggleMenu: () => void;
 }
 
 export default function TopHeader({
-  selectedParent,
-  selectedSub,
+  tabs,
+  activeTabIndex,
+  onSelectTab,
+  onCloseTab,
   currentTime,
   currentDate,
   toggleMenu,
@@ -48,22 +57,56 @@ export default function TopHeader({
         </div>
       </div>
 
-      {/* Desktop header information (Visible only on desktop) */}
-      <div className="hidden md:flex items-center space-x-2 text-xs font-bold text-slate-400">
-        <ShieldCheck className="w-4.5 h-4.5 text-emerald-500" />
-        <span className="text-[#002045] font-black">Lenakids SECURED ENVE_ZONE</span>
-        <span className="text-slate-200">|</span>
-        <span className="hidden xl:inline-block">系统级中间层链路全部运转良好</span>
-        <span className="text-slate-200 hidden xl:inline-block">|</span>
-        <span className="text-sky-600 bg-sky-50 px-2.5 py-0.5 rounded-full font-bold select-all leading-normal text-[10px]">
-          {selectedParent} › {selectedSub}
-        </span>
+      {/* Modern High-Fidelity ERP Tab Bar */}
+      <div className="hidden md:flex items-end flex-grow mr-4 overflow-x-auto scrollbar-none h-full pt-2 gap-1.5">
+        {tabs.map((tab, idx) => {
+          const isActive = idx === activeTabIndex;
+          // In SaaS UI: first tab is permanent and titled "系统首页"
+          const tabTitle = idx === 0 ? "系统首页" : tab.sub;
+          
+          return (
+            <div
+              key={`${tab.parent}-${tab.sub}-${idx}`}
+              onClick={() => onSelectTab(idx)}
+              className={`group relative flex items-center h-[38px] px-4.5 text-[13px] font-medium cursor-pointer select-none transition-all rounded-t-lg border-t border-x ${
+                isActive 
+                  ? "bg-white text-[#006591] border-slate-200 border-t-2 border-t-[#006591] -mb-[1px] z-10 font-bold shadow-[0_-2px_6px_rgba(0,0,0,0.03)]" 
+                  : "bg-slate-50/70 hover:bg-slate-100 hover:text-slate-800 text-slate-500 border-transparent border-b-slate-200"
+              }`}
+            >
+              <div className="flex items-center space-x-1.5">
+                {idx === 0 ? (
+                  <Home className={`w-3.5 h-3.5 ${isActive ? "text-[#006591]" : "text-slate-400 group-hover:text-slate-500"}`} />
+                ) : (
+                  <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-[#006591]" : "bg-slate-300 group-hover:bg-slate-400"}`} />
+                )}
+                
+                <span className="whitespace-nowrap select-none tracking-normal">{tabTitle}</span>
+              </div>
+              
+              {idx !== 0 && (
+                <button
+                  onClick={(e) => onCloseTab(idx, e)}
+                  className="w-4 h-4 ml-2.5 inline-flex items-center justify-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                  title="关闭标签"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+
+              {/* Bottom active block highlight proxy */}
+              {isActive && (
+                <div className="absolute left-0 right-0 bottom-0 h-[1.5px] bg-white z-20" />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Mobile Current Path Indicator (Visible only on mobile) */}
       <div className="md:hidden flex-grow px-2 truncate text-right">
-        <span className="inline-block text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full font-bold leading-normal text-[10px] truncate max-w-[140px]">
-          {selectedParent} › {selectedSub}
+        <span className="inline-block text-[#1890ff] bg-[#1890ff]/5 px-2.5 py-1 rounded-full font-bold leading-normal text-[10px] truncate max-w-[140px]">
+          {tabs[activeTabIndex]?.sub || "OpsPilot"}
         </span>
       </div>
 

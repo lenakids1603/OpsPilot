@@ -447,3 +447,44 @@ export async function uploadReconciliationFile(endpoint: string, file: File, tar
     return { success: false, message: error.message };
   }
 }
+
+// 11. POST AI Assist recognize fields map
+export interface AiRecognizeResult {
+  headers: string[];
+  mappings: Record<string, string>;
+  confidence: Record<string, number>;
+  previewRows: any[];
+  standardizedPreview: any[];
+  fullStandardizedItems: any[];
+  geminiEnhanced: boolean;
+  totalRows: number;
+}
+
+export async function aiRecognizeFields(file: File) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/supplier-reconciliations/ai-recognize-fields", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data as { success: boolean; data: AiRecognizeResult; message?: string };
+  } catch (error: any) {
+    console.error("Failed to recognize fields:", error);
+    return { success: false, data: null as any, message: error.message };
+  }
+}
+
+// 12. GET AI Analysis and Auto-Reconciliation summary
+export async function getAiSummary(batchId: string) {
+  const res = await request<{ summary: string; aiUsed: boolean }>(`/api/supplier-reconciliations/${batchId}/ai-summary`);
+  return res;
+}
+
