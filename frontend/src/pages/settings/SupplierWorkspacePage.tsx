@@ -12,6 +12,7 @@ import {
   Eye, ZoomIn, ZoomOut, RotateCw, RotateCcw
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import SupplierDashboardView from "../../components/SupplierDashboardView";
 
 interface SubSKU {
   sku: string;
@@ -38,12 +39,97 @@ export interface CustomerComplaint {
 export interface SupplierWorkspacePageProps {
   userEmail?: string;
   onLogout?: () => void;
+  activeTab?: string;
+  setActiveTab?: (tab: string) => void;
 }
 
-export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierWorkspacePageProps = {}) {
-  const [activeTab, setActiveTab] = useState("工作台");
+export default function SupplierWorkspacePage({ 
+  userEmail, 
+  onLogout,
+  activeTab: propActiveTab,
+  setActiveTab: propSetActiveTab,
+}: SupplierWorkspacePageProps = {}) {
+  const [localActiveTab, setLocalActiveTab] = useState("工作台");
+  const activeTab = propActiveTab !== undefined ? propActiveTab : localActiveTab;
+  const setActiveTab = propSetActiveTab !== undefined ? propSetActiveTab : setLocalActiveTab;
   const [searchSKU, setSearchSKU] = useState("");
-  
+
+  // Supplier Dashboard States
+  const [dashboardTimeframe, setDashboardTimeframe] = useState<"thisMonth" | "thisQuarter" | "last30Days">("thisMonth");
+  const [selectedCategory, setSelectedCategory] = useState<string>("全部");
+  const [selectedMetricCard, setSelectedMetricCard] = useState<"none" | "procurement" | "todayArrival" | "pendingArrival">("none");
+  const [dashboardSearch, setDashboardSearch] = useState<string>("");
+  const [showDeliveryModal, setShowDeliveryModal] = useState<boolean>(false);
+  const [deliveryForm, setDeliveryForm] = useState({
+    poNo: "PO-20261011",
+    skuCode: "LN-2024-W01-YL-80",
+    qty: "500",
+    carrier: "德邦快递",
+    trackingNo: "DP72839210923",
+  });
+
+  // 1. procurement totals by timeframe and category
+  const procurementPresetData = {
+    thisMonth: {
+      totalQty: 15400,
+      totalAmount: 1085000,
+      categories: [
+        { name: "女童连衣裙", ratio: 42, amount: 455700, count: 6468 },
+        { name: "童装外套", ratio: 31, amount: 336350, count: 4774 },
+        { name: "精柔内衣裤", ratio: 27, amount: 292950, count: 4158 }
+      ],
+      trend: [1200, 1800, 2400, 3105, 2900, 3995],
+      trendLabels: ["第1周", "第2周", "第3周", "第4周", "第5周", "第6周"]
+    },
+    thisQuarter: {
+      totalQty: 48500,
+      totalAmount: 3420000,
+      categories: [
+        { name: "女童连衣裙", ratio: 38, amount: 1299600, count: 18430 },
+        { name: "童装外套", ratio: 34, amount: 1162800, count: 16490 },
+        { name: "精柔内衣裤", ratio: 28, amount: 957600, count: 13580 }
+      ],
+      trend: [8000, 12000, 11000, 17500],
+      trendLabels: ["第一阶段", "第二阶段", "第三阶段", "第四阶段"]
+    },
+    last30Days: {
+      totalQty: 18200,
+      totalAmount: 1280000,
+      categories: [
+        { name: "女童连衣裙", ratio: 40, amount: 512000, count: 7280 },
+        { name: "童装外套", ratio: 35, amount: 448000, count: 6370 },
+        { name: "精柔内衣裤", ratio: 25, amount: 320000, count: 4550 }
+      ],
+      trend: [3500, 4200, 4905, 5595],
+      trendLabels: ["5/1-5/7", "5/8-5/14", "5/15-5/21", "5/22-5/28"]
+    }
+  };
+
+  // 2. Today's arrival list
+  const [todayArrivals, setTodayArrivals] = useState([
+    { id: "REC-20260528-01", poNo: "PO-20261011", skuCode: "LN-2024-W01-YL-80", styleNo: "LN-2024-W01", colorName: "柠檬黄", sizeName: "80码", qty: 600, category: "女童连衣裙", status: "已清点已过账", cost: 58.00, value: 34800, carrier: "顺丰速运", time: "09:30 AM" },
+    { id: "REC-20260528-02", poNo: "PO-20261012", skuCode: "LN-2024-W02-NY-100", styleNo: "LN-2024-W02", colorName: "深邃蓝", sizeName: "100码", qty: 400, category: "童装外套", status: "已清点待账单", cost: 72.50, value: 29000, carrier: "德邦快递", time: "11:15 AM" },
+    { id: "REC-20260528-03", poNo: "PO-20261013", skuCode: "LN-2501-M10-WT-110", styleNo: "LN-2501-M10", colorName: "珍珠白", sizeName: "110码", qty: 850, category: "精柔内衣裤", status: "质检中已锁库", cost: 45.00, value: 38250, carrier: "自主直送", time: "14:00 PM" }
+  ]);
+
+  // 3. Pending arrivals with highlighted anomalies/delays
+  const pendingArrivals = [
+    { id: "AL-001", poNo: "PO-20261014", skuCode: "LN-2024-W01-PK-90", styleNo: "LN-2024-W01", colorName: "雅致粉", qty: 1200, category: "女童连衣裙", pendingQty: 1200, delayDays: 5, alertLevel: "high", reason: "交期逾期滞纳 (染厂胚布调拨延迟)" },
+    { id: "AL-002", poNo: "PO-20261015", skuCode: "LN-2024-W02-RD-80", styleNo: "LN-2024-W02", colorName: "复古红", qty: 800, category: "童装外套", pendingQty: 550, delayDays: 2, alertLevel: "medium", reason: "干线物流阻滞 (德邦物流萧山集散中心异常滞留)" },
+    { id: "AL-003", poNo: "PO-20261016", skuCode: "LN-2501-M10-GY-100", styleNo: "LN-2501-M10", colorName: "花灰", qty: 1500, category: "精柔内衣裤", pendingQty: 1500, delayDays: 0, alertLevel: "low", reason: "工艺会签抽检未通过，正在复核重整中" }
+  ];
+
+  // 4. Historical Arrival Rates - 7 Day chart data
+  const historicalArrival7Days = [
+    { date: "5/22", count: 1200, value: 8.4 },
+    { date: "5/23", count: 1605, value: 11.2 },
+    { date: "5/24", count: 850, value: 5.9 },
+    { date: "5/25", count: 2400, value: 16.8 },
+    { date: "5/26", count: 1950, value: 13.6 },
+    { date: "5/27", count: 1100, value: 7.7 },
+    { date: "5/28", count: 1850, value: 12.8 }
+  ];
+
   // Tabs of supplier workspace
   const tabs = ["工作台", "我的订单", "款式报价", "对账结算", "考核排名", "客户投诉"];
 
@@ -534,72 +620,6 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
         )}
       </AnimatePresence>
 
-      {/* Internal workspace mock header area */}
-      <div className="bg-white border border-slate-100 rounded-2xl px-5 py-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs select-none">
-        {/* Left Brand */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="w-9 h-9 bg-indigo-650 rounded-xl flex items-center justify-center font-serif text-white font-black text-[16px]">
-            H
-          </div>
-          <div>
-            <h3 className="font-extrabold text-slate-805 text-[13px] tracking-tight">杭州织锦服饰有限公司</h3>
-            <span className="text-[10px] text-slate-400 block mt-0.5 leading-none font-bold">供应商在线工作台</span>
-          </div>
-        </div>
-
-        {/* Tab menu items */}
-        <div className="flex items-center gap-1 w-full md:w-auto justify-start border-b border-slate-50 md:border-none pb-2 md:pb-0">
-          {tabs.map(t => {
-            const isSelected = activeTab === t;
-            return (
-              <button
-                key={t}
-                onClick={() => {
-                  setActiveTab(t);
-                  showToast(`📂 已切换至子页面: ${t}`);
-                }}
-                className={`px-3 py-2 rounded-xl text-[11.5px] font-black transition-all cursor-pointer relative ${
-                  isSelected 
-                    ? "text-indigo-700 bg-indigo-50/70 font-extrabold" 
-                    : "text-slate-400 hover:text-slate-700"
-                }`}
-              >
-                {t}
-                {isSelected && (
-                  <motion.div 
-                    layoutId="workspaceUnderline"
-                    className="absolute bottom-0 left-2.5 right-2.5 h-0.5 bg-indigo-600 rounded-full"
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right Admin pill */}
-        <div className="flex items-center justify-between w-full md:w-auto gap-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-100 bg-slate-50/55 text-[10.5px]">
-            <div className="w-5.5 h-5.5 rounded-full bg-indigo-100 text-indigo-700 font-extrabold flex items-center justify-center text-[9px]">
-              {userEmail ? userEmail.slice(0, 1).toUpperCase() : "张"}
-            </div>
-            <div>
-              <span className="font-bold text-slate-705 block leading-tight">{userEmail || "张经理"}</span>
-              <span className="text-[8.5px] text-emerald-600 block leading-none font-medium mt-0.5">
-                {userEmail === "gys@lenakids.com" || userEmail === "gys" ? "供应商特权模式" : "账号已启用"}
-              </span>
-            </div>
-          </div>
-          <button 
-            onClick={onLogout}
-            disabled={!onLogout}
-            className={`p-2 rounded-xl leading-none ${onLogout ? "text-rose-600 bg-rose-50 border border-rose-205 hover:bg-rose-100 cursor-pointer" : "text-slate-350 bg-slate-100 border border-slate-200"}`}
-            title="退出提报程序"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       {/* Greeting Banner Segment */}
       <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
         <div>
@@ -703,6 +723,17 @@ export default function SupplierWorkspacePage({ userEmail, onLogout }: SupplierW
 
       {/* Grid: Split Table vs Sidebar details */}
       {activeTab === "工作台" && (
+        <SupplierDashboardView
+          skus={skus}
+          setActiveTab={setActiveTab}
+          showToast={showToast}
+          setSelectedSku={setSelectedSku}
+          setModalType={setModalType}
+          weeklyComplaintsCount={weeklyComplaintsCount}
+        />
+      )}
+
+      {activeTab === "OLD_工作台_DEPRECATED_DONT_RENDER" && (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           {/* Left Side: SKU Monitoring list table (8/12 scope) */}
           <div className="xl:col-span-8 bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden flex flex-col">
