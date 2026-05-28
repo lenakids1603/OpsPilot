@@ -1,8 +1,15 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState, useMemo } from "react";
 import { 
-  FileText, X, Search, Bell, ArrowRight, Package, Truck, 
-  DollarSign, ShieldAlert, Award, ChevronLeft, ChevronRight,
-  AlertTriangle, UploadCloud, History, Plus, Phone
+  FileText, X, Search, ArrowRight, Package, Truck, 
+  DollarSign, ShieldAlert, Award, AlertTriangle, 
+  ArrowUpRight, HelpCircle, Calendar, ShoppingCart, 
+  Warehouse, Clock, Filter, Download, Eye, AlertCircle, 
+  CheckCircle, Info, PhoneCall, ChevronRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -20,9 +27,30 @@ interface SupplierDashboardViewProps {
   skus: SubSKU[];
   setActiveTab: (tab: string) => void;
   showToast: (msg: string) => void;
-  setSelectedSku: (sku: string | null) => void;
-  setModalType: (type: "quote" | "bill" | "detail" | null) => void;
-  weeklyComplaintsCount: number;
+  setSelectedSku?: (sku: string | null) => void;
+  setModalType?: (type: "quote" | "bill" | "detail" | null) => void;
+  weeklyComplaintsCount?: number;
+}
+
+// Structuring details for each SKU for the slide-over drawer
+interface DetailedSkuInfo {
+  sku: string;
+  name: string;
+  imageUrl: string;
+  category: string;
+  purchaseQty: number;
+  storedQty: number;
+  remainingQty: number;
+  unitPrice: number;
+  amount: number;
+  dueDate: string;
+  status: "OVERDUE" | "PRODUCING" | "STORING" | "UPCOMING" | "COMPLETED";
+  overdueDays: number;
+  overdueDeduction: number;
+  qualityReturns: number;
+  qualityDeduction: number;
+  lastInboundTime: string;
+  supplierName: string;
 }
 
 export default function SupplierDashboardView({
@@ -31,1265 +59,1427 @@ export default function SupplierDashboardView({
   showToast,
   setSelectedSku,
   setModalType,
-  weeklyComplaintsCount
+  weeklyComplaintsCount = 0
 }: SupplierDashboardViewProps) {
-  // Local states for the Dashboard
-  const [dashboardTimeframe, setDashboardTimeframe] = useState<"thisMonth" | "thisQuarter" | "last30Days">("thisMonth");
-  const [selectedCategory, setSelectedCategory] = useState<string>("全部");
-  const [selectedMetricCard, setSelectedMetricCard] = useState<"none" | "procurement" | "todayArrival" | "pendingArrival">("none");
-  const [searchSKU, setSearchSKU] = useState<string>("");
-  const [showDeliveryModal, setShowDeliveryModal] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<"style" | "sku">("sku");
+  // 1. Timeframe Select state (Defaults to "This Month")
+  const [selectedTimeframe, setSelectedTimeframe] = useState<"今日" | "本月" | "近30天" | "今年" | "自定义">("本月");
+  const [customDateRange, setCustomDateRange] = useState({ start: "2026-05-01", end: "2026-05-31" });
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [deliveryForm, setDeliveryForm] = useState({
-    poNo: "PO-20261011",
-    skuCode: "LN-2024-W01-YL-80",
-    qty: "500",
-    carrier: "德邦快递",
-    trackingNo: "DP72839210923",
-  });
+  // 2. Currently selected SKU for Right Drawer detail view
+  const [activeDrawerItem, setActiveDrawerItem] = useState<DetailedSkuInfo | null>(null);
 
-  const procurementPresetData = {
-    thisMonth: {
-      totalQty: 15400,
-      totalAmount: 1085000,
-      categories: [
-        { name: "女童连衣裙", ratio: 42, amount: 455700, count: 6468 },
-        { name: "童装外套", ratio: 31, amount: 336350, count: 4774 },
-        { name: "精柔内衣裤", ratio: 27, amount: 292950, count: 4158 }
-      ],
-      trend: [1200, 1800, 2400, 3105, 2900, 3995],
-      trendLabels: ["第1周", "第2周", "第3周", "第4周", "第5周", "第6周"]
-    },
-    thisQuarter: {
-      totalQty: 48500,
-      totalAmount: 3420000,
-      categories: [
-        { name: "女童连衣裙", ratio: 38, amount: 1299600, count: 18430 },
-        { name: "童装外套", ratio: 34, amount: 1162800, count: 16490 },
-        { name: "精柔内衣裤", ratio: 28, amount: 957600, count: 13580 }
-      ],
-      trend: [8000, 12000, 11000, 17500],
-      trendLabels: ["第一阶段", "第二阶段", "第三阶段", "第四阶段"]
-    },
-    last30Days: {
-      totalQty: 18200,
-      totalAmount: 1280000,
-      categories: [
-        { name: "女童连衣裙", ratio: 40, amount: 512000, count: 7280 },
-        { name: "童装外套", ratio: 35, amount: 448000, count: 6370 },
-        { name: "精柔内衣裤", ratio: 25, amount: 320000, count: 4550 }
-      ],
-      trend: [3500, 4200, 4905, 5595],
-      trendLabels: ["5/1-5/7", "5/8-5/14", "5/15-5/21", "5/22-5/28"]
+  // 3. Hover state for Timeline nodes
+  const [hoveredTimelineNode, setHoveredTimelineNode] = useState<string | null>(null);
+
+  // 4. Dataset representing multiple timeranges based on Stitch Mockup
+  const dashboardData = useMemo(() => {
+    const defaultSupplier = "杭州织锦服饰有限公司";
+    
+    const datasets: Record<typeof selectedTimeframe, {
+      purchaseTotalQty: number;
+      purchaseTotalAmount: number;
+      inboundTotalQty: number;
+      inboundTotalAmount: number;
+      overdueQty: number;
+      overdueDeductionAmount: number;
+      qualityReturnQty: number;
+      qualityDeductionAmount: number;
+      timelineItems: Array<{
+        date: string;
+        isToday?: boolean;
+        hasOverlappingItems?: boolean;
+        itemCount?: number;
+        sku?: string;
+        name?: string;
+        qty?: number;
+        status?: "已超时" | "生产中" | "部分入库" | "即将交付" | "已完成";
+        colorType?: "red" | "yellow" | "blue" | "green";
+        image?: string;
+      }>;
+      pendingItems: DetailedSkuInfo[];
+    }> = {
+      今日: {
+        purchaseTotalQty: 1200,
+        purchaseTotalAmount: 68400,
+        inboundTotalQty: 850,
+        inboundTotalAmount: 48500,
+        overdueQty: 0,
+        overdueDeductionAmount: 0,
+        qualityReturnQty: 4,
+        qualityDeductionAmount: 120,
+        timelineItems: [
+          { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已完成", colorType: "green", image: "dress_pink" },
+          { date: "5/26" },
+          { date: "5/27", isToday: true },
+          { date: "5/28" },
+          { date: "5/29", sku: "LN-2026-W01-YL-80", name: "女童法式轻复古刺绣连衣裙", qty: 180, status: "即将交付", colorType: "blue", image: "dress_yellow" },
+          { date: "5/30" },
+          { date: "5/31", hasOverlappingItems: true, itemCount: 1 },
+          { date: "6/1" },
+          { date: "6/2" },
+          { date: "6/3" },
+          { date: "6/4" }
+        ],
+        pendingItems: [
+          {
+            sku: "LN-2026-W01-PK-66",
+            name: "女童泡泡袖亮丝加绒连衣裙 · 粉色",
+            category: "女童连衣裙",
+            imageUrl: "dress_pink",
+            purchaseQty: 1200,
+            storedQty: 900,
+            remainingQty: 300,
+            unitPrice: 61.50,
+            amount: 18450.00,
+            dueDate: "2026-05-25",
+            status: "COMPLETED",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 0,
+            qualityDeduction: 0,
+            lastInboundTime: "2026-05-28",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W01-YL-80",
+            name: "女童法式轻复古刺绣连衣裙 · 柠檬黄",
+            category: "女童连衣裙",
+            imageUrl: "dress_yellow",
+            purchaseQty: 800,
+            storedQty: 620,
+            remainingQty: 180,
+            unitPrice: 68.00,
+            amount: 12240.00,
+            dueDate: "2026-05-29",
+            status: "UPCOMING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 2,
+            qualityDeduction: 120,
+            lastInboundTime: "2026-05-27",
+            supplierName: defaultSupplier
+          }
+        ]
+      },
+      本月: {
+        purchaseTotalQty: 12860,
+        purchaseTotalAmount: 746280,
+        inboundTotalQty: 9420,
+        inboundTotalAmount: 546360,
+        overdueQty: 320,
+        overdueDeductionAmount: 3200,
+        qualityReturnQty: 48,
+        qualityDeductionAmount: 1680,
+        timelineItems: [
+          { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
+          { date: "5/26" },
+          { date: "5/27", isToday: true },
+          { date: "5/28" },
+          { date: "5/29", sku: "LN-2026-W01-YL-80", name: "女童法式轻复古刺绣连衣裙", qty: 180, status: "已超时", colorType: "yellow", image: "dress_yellow" },
+          { date: "5/30" },
+          { date: "5/31", hasOverlappingItems: true, itemCount: 3 },
+          { date: "6/1" },
+          { date: "6/2" },
+          { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
+          { date: "6/4" }
+        ],
+        pendingItems: [
+          {
+            sku: "LN-2026-W01-PK-66",
+            name: "女童泡泡袖亮丝加绒连衣裙 · 经典粉",
+            category: "女童连衣裙",
+            imageUrl: "dress_pink",
+            purchaseQty: 1200,
+            storedQty: 900,
+            remainingQty: 300,
+            unitPrice: 61.50,
+            amount: 18450.00,
+            dueDate: "2026-05-25",
+            status: "OVERDUE",
+            overdueDays: 3,
+            overdueDeduction: 3200,
+            qualityReturns: 8,
+            qualityDeduction: 240,
+            lastInboundTime: "2026-05-22",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W01-YL-80",
+            name: "女童法式轻复古刺绣连衣裙 · 柠檬黄",
+            category: "女童连衣裙",
+            imageUrl: "dress_yellow",
+            purchaseQty: 800,
+            storedQty: 620,
+            remainingQty: 180,
+            unitPrice: 68.00,
+            amount: 12240.00,
+            dueDate: "2026-05-29",
+            status: "PRODUCING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 12,
+            qualityDeduction: 480,
+            lastInboundTime: "2026-05-24",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W02-BL-90",
+            name: "童装连帽防风保暖运动外套 · 孔雀蓝",
+            category: "童装外套",
+            imageUrl: "jacket_blue",
+            purchaseQty: 2500,
+            storedQty: 2000,
+            remainingQty: 500,
+            unitPrice: 69.00,
+            amount: 34500.00,
+            dueDate: "2026-06-03",
+            status: "STORING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 28,
+            qualityDeduction: 960,
+            lastInboundTime: "2026-05-26",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W03-GY-10",
+            name: "精柔舒棉针织束脚运动裤 · 炭灰色",
+            category: "精柔内衣裤",
+            imageUrl: "pants_grey",
+            purchaseQty: 1500,
+            storedQty: 0,
+            remainingQty: 1500,
+            unitPrice: 15.00,
+            amount: 22500.00,
+            dueDate: "2026-06-15",
+            status: "UPCOMING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 0,
+            qualityDeduction: 0,
+            lastInboundTime: "暂无",
+            supplierName: defaultSupplier
+          }
+        ]
+      },
+      近30天: {
+        purchaseTotalQty: 15400,
+        purchaseTotalAmount: 896200,
+        inboundTotalQty: 11200,
+        inboundTotalAmount: 648300,
+        overdueQty: 380,
+        overdueDeductionAmount: 3800,
+        qualityReturnQty: 52,
+        qualityDeductionAmount: 1920,
+        timelineItems: [
+          { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
+          { date: "5/26" },
+          { date: "5/27", isToday: true },
+          { date: "5/28" },
+          { date: "5/29", sku: "LN-2026-W01-YL-80", name: "女童法式轻复古刺绣连衣裙", qty: 180, status: "已超时", colorType: "yellow", image: "dress_yellow" },
+          { date: "5/30" },
+          { date: "5/31", hasOverlappingItems: true, itemCount: 4 },
+          { date: "6/1" },
+          { date: "6/2" },
+          { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
+          { date: "6/4" }
+        ],
+        pendingItems: [
+          {
+            sku: "LN-2026-W01-PK-66",
+            name: "女童泡泡袖亮丝加绒连衣裙 · 经典粉",
+            category: "女童连衣裙",
+            imageUrl: "dress_pink",
+            purchaseQty: 1200,
+            storedQty: 900,
+            remainingQty: 300,
+            unitPrice: 61.50,
+            amount: 18450.00,
+            dueDate: "2026-05-25",
+            status: "OVERDUE",
+            overdueDays: 4,
+            overdueDeduction: 3800,
+            qualityReturns: 10,
+            qualityDeduction: 300,
+            lastInboundTime: "2026-05-22",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W01-YL-80",
+            name: "女童法式轻复古刺绣连衣裙 · 柠檬黄",
+            category: "女童连衣裙",
+            imageUrl: "dress_yellow",
+            purchaseQty: 800,
+            storedQty: 620,
+            remainingQty: 180,
+            unitPrice: 68.00,
+            amount: 12240.00,
+            dueDate: "2026-05-29",
+            status: "PRODUCING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 14,
+            qualityDeduction: 560,
+            lastInboundTime: "2026-05-24",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W02-BL-90",
+            name: "童装连帽防风保暖运动外套 · 孔雀蓝",
+            category: "童装外套",
+            imageUrl: "jacket_blue",
+            purchaseQty: 2500,
+            storedQty: 2000,
+            remainingQty: 500,
+            unitPrice: 69.00,
+            amount: 34500.00,
+            dueDate: "2026-06-03",
+            status: "STORING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 28,
+            qualityDeduction: 1060,
+            lastInboundTime: "2026-05-26",
+            supplierName: defaultSupplier
+          }
+        ]
+      },
+      今年: {
+        purchaseTotalQty: 85420,
+        purchaseTotalAmount: 4956320,
+        inboundTotalQty: 78540,
+        inboundTotalAmount: 4426500,
+        overdueQty: 980,
+        overdueDeductionAmount: 9800,
+        qualityReturnQty: 210,
+        qualityDeductionAmount: 8400,
+        timelineItems: [
+          { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
+          { date: "5/26" },
+          { date: "5/27", isToday: true },
+          { date: "5/28" },
+          { date: "5/29", sku: "LN-2026-W01-YL-80", name: "女童法式轻复古刺绣连衣裙", qty: 180, status: "已超时", colorType: "yellow", image: "dress_yellow" },
+          { date: "5/30" },
+          { date: "5/31", hasOverlappingItems: true, itemCount: 8 },
+          { date: "6/1" },
+          { date: "6/2" },
+          { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
+          { date: "6/4" }
+        ],
+        pendingItems: [
+          {
+            sku: "LN-2026-W01-PK-66",
+            name: "女童泡泡袖亮丝加绒连衣裙 · 经典粉",
+            category: "女童连衣裙",
+            imageUrl: "dress_pink",
+            purchaseQty: 1200,
+            storedQty: 900,
+            remainingQty: 300,
+            unitPrice: 61.50,
+            amount: 18450.00,
+            dueDate: "2026-05-25",
+            status: "OVERDUE",
+            overdueDays: 10,
+            overdueDeduction: 9800,
+            qualityReturns: 45,
+            qualityDeduction: 1210,
+            lastInboundTime: "2026-05-22",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W01-YL-80",
+            name: "女童法式轻复古刺绣连衣裙 · 柠檬黄",
+            category: "女童连衣裙",
+            imageUrl: "dress_yellow",
+            purchaseQty: 800,
+            storedQty: 620,
+            remainingQty: 180,
+            unitPrice: 68.00,
+            amount: 12240.00,
+            dueDate: "2026-05-29",
+            status: "PRODUCING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 32,
+            qualityDeduction: 1280,
+            lastInboundTime: "2026-05-24",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W02-BL-90",
+            name: "童装连帽防风保暖运动外套 · 孔雀蓝",
+            category: "童装外套",
+            imageUrl: "jacket_blue",
+            purchaseQty: 2500,
+            storedQty: 2000,
+            remainingQty: 500,
+            unitPrice: 69.00,
+            amount: 34500.00,
+            dueDate: "2026-06-03",
+            status: "STORING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 80,
+            qualityDeduction: 3200,
+            lastInboundTime: "2026-05-26",
+            supplierName: defaultSupplier
+          }
+        ]
+      },
+      自定义: {
+        purchaseTotalQty: 6420,
+        purchaseTotalAmount: 373140,
+        inboundTotalQty: 4710,
+        inboundTotalAmount: 273180,
+        overdueQty: 160,
+        overdueDeductionAmount: 1600,
+        qualityReturnQty: 24,
+        qualityDeductionAmount: 840,
+        timelineItems: [
+          { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
+          { date: "5/26" },
+          { date: "5/27", isToday: true },
+          { date: "5/28" },
+          { date: "5/29", sku: "LN-2026-W01-YL-80", name: "女童法式轻复古刺绣连衣裙", qty: 180, status: "已超时", colorType: "yellow", image: "dress_yellow" },
+          { date: "5/30" },
+          { date: "5/31", hasOverlappingItems: true, itemCount: 2 },
+          { date: "6/1" },
+          { date: "6/2" },
+          { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
+          { date: "6/4" }
+        ],
+        pendingItems: [
+          {
+            sku: "LN-2026-W01-PK-66",
+            name: "女童泡泡袖亮丝加绒连衣裙 · 经典粉",
+            category: "女童连衣裙",
+            imageUrl: "dress_pink",
+            purchaseQty: 1200,
+            storedQty: 900,
+            remainingQty: 300,
+            unitPrice: 61.50,
+            amount: 18450.00,
+            dueDate: "2026-05-25",
+            status: "OVERDUE",
+            overdueDays: 2,
+            overdueDeduction: 1600,
+            qualityReturns: 4,
+            qualityDeduction: 120,
+            lastInboundTime: "2026-05-22",
+            supplierName: defaultSupplier
+          },
+          {
+            sku: "LN-2026-W02-BL-90",
+            name: "童装连帽防风保暖运动外套 · 孔雀蓝",
+            category: "童装外套",
+            imageUrl: "jacket_blue",
+            purchaseQty: 2500,
+            storedQty: 2000,
+            remainingQty: 500,
+            unitPrice: 69.00,
+            amount: 34500.00,
+            dueDate: "2026-06-03",
+            status: "STORING",
+            overdueDays: 0,
+            overdueDeduction: 0,
+            qualityReturns: 20,
+            qualityDeduction: 720,
+            lastInboundTime: "2026-05-26",
+            supplierName: defaultSupplier
+          }
+        ]
+      }
+    };
+    return datasets[selectedTimeframe];
+  }, [selectedTimeframe]);
+
+  const handleTimeframeChange = (frame: typeof selectedTimeframe) => {
+    setSelectedTimeframe(frame);
+    if (frame === "自定义") {
+      setShowCustomPicker(true);
+    } else {
+      setShowCustomPicker(false);
+    }
+    showToast(`📅 已切换时间筛选：近 [${frame}] 的指标分析`);
+  };
+
+  const handleCustomDateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowCustomPicker(false);
+    showToast(`📅 已应用自定义时间段: ${customDateRange.start} 至 ${customDateRange.end}`);
+  };
+
+  // 5. Search filtering for Deliverables Table
+  const filteredPendingItems = useMemo(() => {
+    if (!searchQuery) return dashboardData.pendingItems;
+    return dashboardData.pendingItems.filter(item => 
+      item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [dashboardData, searchQuery]);
+
+  // SVG Render Helper for Apparel Drawing Cards
+  const renderApparelSVGPlaceholder = (type: string, colorClass: string) => {
+    if (type.includes("pink")) {
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="currentColor">
+          {/* Dress Shape inside an elegant container */}
+          <path d="M12 2c-.55 0-1 .45-1 1v2.1c-2.24.42-4 2.33-4 4.67v8.23c0 .55.45 1 1 1h8c.55 0 1-.45 1-1V9.77c0-2.34-1.76-4.25-4-4.67V3c0-.55-.45-1-1-1zm-3 7.77c0-1.8 1.34-3.26 3-3.26s3 1.46 3 3.26v2.23H9V9.77zM15 17H9v-3h6v3z"/>
+        </svg>
+      );
+    } else if (type.includes("yellow")) {
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="currentColor">
+          {/* Windbreaker Jacket Shape */}
+          <path d="M12 2L4 7v13c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7l-8-5zm-5 7h4v11H7V9zm10 11h-4V9h4v11z"/>
+        </svg>
+      );
+    } else if (type.includes("blue")) {
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="currentColor">
+          {/* Outdoor Heavy Outwear Shape */}
+          <path d="M18 8H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2zM8 4h8v2H8V4z"/>
+        </svg>
+      );
+    } else {
+      return (
+        <svg className={`w-8 h-8 ${colorClass}`} viewBox="0 0 24 24" fill="currentColor">
+          {/* General Box structure for other clothes */}
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 15H7v-5h5v5zm5-7h-5V7h5v4z"/>
+        </svg>
+      );
     }
   };
 
-  const [todayArrivals, setTodayArrivals] = useState([
-    { id: "REC-20260528-01", poNo: "PO-20261011", skuCode: "LN-2024-W01-YL-80", styleNo: "LN-2024-W01", colorName: "柠檬黄", sizeName: "80码", qty: 600, category: "女童连衣裙", status: "已清点已过账", cost: 58.00, value: 34800, carrier: "顺丰速运", time: "09:30 AM" },
-    { id: "REC-20260528-02", poNo: "PO-20261012", skuCode: "LN-2024-W02-NY-100", styleNo: "LN-2024-W02", colorName: "深邃蓝", sizeName: "100码", qty: 400, category: "童装外套", status: "已清点待账单", cost: 72.50, value: 29000, carrier: "德邦快递", time: "11:15 AM" },
-    { id: "REC-20260528-03", poNo: "PO-20261013", skuCode: "LN-2501-M10-WT-110", styleNo: "LN-2501-M10", colorName: "珍珠白", sizeName: "110码", qty: 850, category: "精柔内衣裤", status: "质检中已锁库", cost: 45.00, value: 38250, carrier: "自主直送", time: "14:00 PM" }
-  ]);
-
-  const pendingArrivals = [
-    { id: "AL-001", poNo: "PO-20261014", skuCode: "LN-2024-W01-PK-90", styleNo: "LN-2024-W01", colorName: "雅致粉", qty: 1200, category: "女童连衣裙", pendingQty: 1200, delayDays: 5, alertLevel: "high", reason: "交期逾期滞纳 (染厂胚布调拨延迟)" },
-    { id: "AL-002", poNo: "PO-20261015", skuCode: "LN-2024-W02-RD-80", styleNo: "LN-2024-W02", colorName: "复古红", qty: 800, category: "童装外套", pendingQty: 550, delayDays: 2, alertLevel: "medium", reason: "干线物流阻滞 (德邦物流萧山集散中心异常滞留)" },
-    { id: "AL-003", poNo: "PO-20261016", skuCode: "LN-2501-M10-GY-100", styleNo: "LN-2501-M10", colorName: "花灰", qty: 1500, category: "精柔内衣裤", pendingQty: 1500, delayDays: 0, alertLevel: "low", reason: "工艺会签抽检未通过，正在复核重整中" }
-  ];
-
-  const historicalArrival7Days = [
-    { date: "5/22", count: 850, value: 5.6 },
-    { date: "5/23", count: 1100, value: 7.9 },
-    { date: "5/24", count: 1400, value: 9.8 },
-    { date: "5/25", count: 1950, value: 13.5 },
-    { date: "5/26", count: 1700, value: 11.2 },
-    { date: "5/27", count: 2450, value: 16.8 },
-    { date: "5/28", count: 1850, value: 10.2 }
-  ];
-
-  // Filters for Table C
-  const filteredSkus = useMemo(() => {
-    return skus.filter(s => {
-      const matchSearch = s.sku.toLowerCase().includes(searchSKU.toLowerCase()) || s.colorName.includes(searchSKU);
-      const matchCat = selectedCategory === "全部" || 
-        (selectedCategory === "女童连衣裙" && s.sku.includes("W01")) ||
-        (selectedCategory === "童装外套" && s.sku.includes("W02")) ||
-        (selectedCategory === "精柔内衣裤" && s.sku.includes("M10"));
-      return matchSearch && matchCat;
-    });
-  }, [skus, searchSKU, selectedCategory]);
-
-  const filteredStyleGroups = useMemo(() => {
-    const groups: Record<string, {
-      styleNo: string;
-      status: "生产中" | "待质检" | "已结案";
-    }> = {};
-
-    skus.forEach(s => {
-      const matchCat = selectedCategory === "全部" || 
-        (selectedCategory === "女童连衣裙" && s.sku.includes("W01")) ||
-        (selectedCategory === "童装外套" && s.sku.includes("W02")) ||
-        (selectedCategory === "精柔内衣裤" && s.sku.includes("M10"));
-
-      if (matchCat) {
-        if (!groups[s.styleNo]) {
-          groups[s.styleNo] = {
-            styleNo: s.styleNo,
-            status: "已结案",
-          };
-        }
-        if (s.status === "生产中") {
-          groups[s.styleNo].status = "生产中";
-        } else if (s.status === "待质检" && groups[s.styleNo].status !== "生产中") {
-          groups[s.styleNo].status = "待质检";
-        }
-      }
-    });
-
-    return Object.values(groups).filter(g => 
-      !searchSKU || g.styleNo.toLowerCase().includes(searchSKU.toLowerCase())
-    );
-  }, [skus, searchSKU, selectedCategory]);
-
   return (
-    <div className="space-y-6 select-none animate-[fadeIn_0.5s_ease-out]">
-      {/* Dashboard Control Filter Strip */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <span className="text-[11px] text-slate-400 font-extrabold uppercase">时间段切换:</span>
-          <div className="bg-slate-100 p-0.5 rounded-xl border border-slate-200/60 flex items-center">
-            <button
-              onClick={() => {
-                setDashboardTimeframe("thisMonth");
-                showToast("📅 已加载本月实时采购与入库汇总。");
-              }}
-              className={`px-3 py-1 text-[10.5px] font-black rounded-lg transition-all cursor-pointer ${
-                dashboardTimeframe === "thisMonth"
-                  ? "bg-white text-indigo-700 shadow-xs"
-                  : "text-slate-455 hover:text-slate-700"
-              }`}
-            >
-              本月财务期
-            </button>
-            <button
-              onClick={() => {
-                setDashboardTimeframe("thisQuarter");
-                showToast("📅 已加载本季度跨期宏观对账与采购大数。");
-              }}
-              className={`px-3 py-1 text-[10.5px] font-black rounded-lg transition-all cursor-pointer ${
-                dashboardTimeframe === "thisQuarter"
-                  ? "bg-white text-indigo-700 shadow-xs"
-                  : "text-slate-455 hover:text-slate-700"
-              }`}
-            >
-              本季度
-            </button>
-            <button
-              onClick={() => {
-                setDashboardTimeframe("last30Days");
-                showToast("📅 已加载近 30 天滑动运营周期数据。");
-              }}
-              className={`px-3 py-1 text-[10.5px] font-black rounded-lg transition-all cursor-pointer ${
-                dashboardTimeframe === "last30Days"
-                  ? "bg-white text-indigo-700 shadow-xs"
-                  : "text-slate-455 hover:text-slate-700"
-              }`}
-            >
-              近30天
-            </button>
-          </div>
+    <div id="supplier-dashboard-viewport" className="space-y-6">
 
-          <span className="text-[11px] text-slate-400 font-extrabold uppercase ml-3">品类筛选:</span>
-          <div className="flex items-center gap-1">
-            {["全部", "女童连衣裙", "童装外套", "精柔内衣裤"].map(cat => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setSelectedCategory(cat);
-                  showToast(`🔍 已筛选品类为: ${cat}`);
-                }}
-                className={`px-3 py-1 text-[10.5px] font-bold rounded-lg border transition-all cursor-pointer ${
-                  selectedCategory === cat
-                    ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-black"
-                    : "bg-white border-slate-150 text-slate-500 hover:bg-slate-50"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+      {/* Title Segment styled matching the layout of Stitch */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-[#012b24] font-sans flex items-center gap-2">
+            <span>工作台首页 Dashboard</span>
+          </h2>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            数据最后统计更新时间：<span className="font-semibold text-slate-600">2026-05-28 09:42 AM</span> (实时计算) 
+          </p>
         </div>
 
-        {/* Comprehensive Search Field */}
-        <div className="relative w-full md:w-56 rounded-xl border border-slate-205 py-1.5 pl-8 pr-3 bg-slate-50/50 focus-within:bg-white focus-within:border-indigo-400 transition-all">
-          <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="搜索款号/SKU/采购物流单..."
-            value={searchSKU}
-            onChange={e => setSearchSKU(e.target.value)}
-            className="w-full bg-transparent outline-none text-[11px] font-sans placeholder-slate-400 text-slate-700"
-          />
-          {searchSKU && (
-            <button 
-              onClick={() => setSearchSKU("")}
-              className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Interactive Metric Showcase Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: 采购总览 */}
-        <div
-          onClick={() => {
-            setSelectedMetricCard(selectedMetricCard === "procurement" ? "none" : "procurement");
-            showToast("💡 提示：点击大卡片下方已高亮过滤对应明细行。");
-          }}
-          className={`bg-white border rounded-2xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group ${
-            selectedMetricCard === "procurement"
-              ? "border-indigo-500 ring-2 ring-indigo-50"
-              : "border-slate-100 hover:border-slate-300"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-slate-400 font-black text-[10.5px] uppercase tracking-wide group-hover:text-indigo-650 transition-colors">
-              采购总览 ({dashboardTimeframe === "thisMonth" ? "本月" : dashboardTimeframe === "thisQuarter" ? "本季" : "30天"})
-            </span>
-            <div className="p-1 px-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-[9px] font-bold">
-              ERP订单源
-            </div>
-          </div>
-
-          <div className="mt-3.5 space-y-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-slate-800 font-mono tracking-tight">
-                {(selectedCategory === "全部" 
-                  ? procurementPresetData[dashboardTimeframe].totalQty 
-                  : (procurementPresetData[dashboardTimeframe].categories.find(c => c.name === selectedCategory)?.count || 0)
-                ).toLocaleString()}
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold">件</span>
-            </div>
-            <div className="text-[10px] text-slate-400 font-medium">
-              采购预计款：
-              <span className="font-extrabold text-indigo-650 font-mono">
-                ¥{(selectedCategory === "全部" 
-                  ? procurementPresetData[dashboardTimeframe].totalAmount 
-                  : (procurementPresetData[dashboardTimeframe].categories.find(c => c.name === selectedCategory)?.amount || 0)
-                ).toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[9.5px]">
-            <span className="text-slate-400 font-medium">按单款穿透分析占比</span>
-            <span className="text-indigo-600 font-extrabold group-hover:underline flex items-center gap-1">
-              查看品类比率 <ArrowRight className="w-3 h-3" />
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: 今日到货登记 */}
-        <div
-          onClick={() => {
-            setSelectedMetricCard(selectedMetricCard === "todayArrival" ? "none" : "todayArrival");
-            showToast("💡 提示：点击今日入库卡片，下方已过滤属于今日实收的单据。");
-          }}
-          className={`bg-white border rounded-2xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group ${
-            selectedMetricCard === "todayArrival"
-              ? "border-emerald-500 ring-2 ring-emerald-5"
-              : "border-slate-100 hover:border-slate-300"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-slate-400 font-black text-[10.5px] uppercase tracking-wide group-hover:text-emerald-600 transition-colors">
-              今日入库实收
-            </span>
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          </div>
-
-          <div className="mt-3.5 space-y-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-slate-800 font-mono tracking-tight">
-                {todayArrivals.reduce((sum, item) => {
-                  if (selectedCategory !== "全部" && item.category !== selectedCategory) return sum;
-                  return sum + item.qty;
-                }, 0).toLocaleString()}
-              </span>
-              <span className="text-[10px] text-emerald-600 font-bold">件</span>
-            </div>
-            <div className="text-[10px] text-slate-455 font-medium">
-              入库清点估算：
-              <span className="font-extrabold text-emerald-600 font-mono">
-                ¥{todayArrivals.reduce((sum, item) => {
-                  if (selectedCategory !== "全部" && item.category !== selectedCategory) return sum;
-                  return sum + item.value;
-                }, 0).toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[9.5px]">
-            <span className="text-emerald-600 font-extrabold font-sans">今日已过账：{todayArrivals.length} 笔款</span>
-            <span className="text-slate-400 group-hover:text-slate-600 font-bold">卡片过滤明细</span>
-          </div>
-        </div>
-
-        {/* Card 3: 待收 & 未到货警示 */}
-        <div
-          onClick={() => {
-            setSelectedMetricCard(selectedMetricCard === "pendingArrival" ? "none" : "pendingArrival");
-            showToast("💡 提示：点击待收警示，下方已过滤异常滞延入库细化预警。");
-          }}
-          className={`bg-white border rounded-2xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group ${
-            selectedMetricCard === "pendingArrival"
-              ? "border-amber-500 ring-2 ring-amber-50"
-              : "border-slate-100 hover:border-slate-300"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-slate-400 font-black text-[10.5px] uppercase tracking-wide group-hover:text-amber-600 transition-colors">
-              待收 / 未到货提醒
-            </span>
-            <div className="p-1 rounded-md bg-amber-55 text-amber-700 text-[8.5px] font-black">
-              {pendingArrivals.filter(p => p.delayDays > 0).length}项超期
-            </div>
-          </div>
-
-          <div className="mt-3.5 space-y-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-rose-600 font-mono tracking-tight animate-pulse">
-                {pendingArrivals.reduce((sum, item) => {
-                  if (selectedCategory !== "全部" && item.category !== selectedCategory) return sum;
-                  return sum + item.pendingQty;
-                }, 0).toLocaleString()}
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold">件</span>
-            </div>
-            <div className="text-[10px] text-slate-455 font-medium">
-              生产在外待发：
-              <span className="font-extrabold text-slate-600">
-                {pendingArrivals.filter(item => selectedCategory === "全部" || item.category === selectedCategory).length} 口款项 PO
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-[9.5px]">
-            <span className="text-rose-500 font-extrabold flex items-center gap-1">
-              高亮延迟入库项
-            </span>
-            <span className="text-slate-400 group-hover:text-amber-600 font-bold">点击追踪</span>
-          </div>
-        </div>
-
-        {/* Card 4: 考核得分荣誉大盘 */}
-        <div
-          onClick={() => {
-            setActiveTab("考核排名");
-            showToast("🏆 已为您跳转到供应商考核评价大盘");
-          }}
-          className="bg-gradient-to-br from-[#0c1f35] to-[#163354] border border-slate-800 rounded-2xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group hover:shadow-md hover:scale-[1.01]"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-indigo-200 font-black text-[10.5px] uppercase tracking-wide">
-              本季考核与行业榜
-            </span>
-            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-black text-[9px] scale-90 border border-emerald-500/20">
-              一等评级 (S)
-            </span>
-          </div>
-
-          <div className="mt-3 text-white flex items-center justify-between">
-            <div>
-              <span className="text-[9.5px] text-indigo-200 block opacity-80">综合绩效成绩</span>
-              <span className="text-2xl font-extrabold font-mono tracking-tight">96.8<span className="text-xs text-indigo-300 font-sans font-medium"> 分</span></span>
-            </div>
-            <div className="text-right border-l border-white/10 pl-3">
-              <span className="text-[9.5px] text-indigo-200 block opacity-80">杭州服饰排行</span>
-              <span className="text-lg font-bold text-amber-400 font-mono">NO.2 <span className="text-[10px] text-indigo-200 font-sans font-medium">/ 32</span></span>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-2.5 border-t border-white/10 flex items-center justify-between text-[9px] text-indigo-200">
-            <span>出货合格率: 99.1%</span>
-            <span className="text-amber-400 font-bold group-hover:underline flex items-center gap-0.5">
-              查看排名表 <ArrowRight className="w-2.5 h-2.5" />
-            </span>
+        {/* Time Selection control strip from Stitch Mockup */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] text-slate-400 font-extrabold uppercase">指标区间筛选:</span>
+          <div className="bg-[#f0f4f2] p-1 rounded-xl border border-emerald-500/10 flex items-center">
+            {(["今日", "本月", "近30天", "今年", "自定义"] as const).map((frame) => {
+              const isActive = selectedTimeframe === frame;
+              return (
+                <button
+                  key={frame}
+                  onClick={() => handleTimeframeChange(frame)}
+                  className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-white text-emerald-800 shadow-[0_2px_5px_rgba(0,0,0,0.06)] scale-102"
+                      : "text-slate-500 hover:text-emerald-900 hover:bg-white/40"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {frame === "自定义" && <Calendar className="w-3.5 h-3.5" />}
+                    {frame}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* Column 1: Charts & Data Trends visualization (8/12 scope) */}
-        <div className="xl:col-span-8 space-y-6">
-          {/* Dynamic SVG Graphical Trend Card */}
-          <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs">
-            <div className="flex items-center justify-between flex-wrap gap-4 mb-4 select-none">
+      {/* Date interval modal/popover (Custom selector drawer element) */}
+      <AnimatePresence>
+        {showCustomPicker && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="p-4 bg-white border border-emerald-100 rounded-2xl shadow-md max-w-md"
+          >
+            <form onSubmit={handleCustomDateSubmit} className="flex flex-wrap items-end gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-black text-slate-400 block">开始日期</label>
+                <input 
+                  type="date" 
+                  value={customDateRange.start} 
+                  onChange={e => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 outline-hidden focus:border-emerald-500 font-mono text-xs text-slate-700" 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-black text-slate-400 block">结束日期</label>
+                <input 
+                  type="date" 
+                  value={customDateRange.end} 
+                  onChange={e => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 outline-hidden focus:border-emerald-500 font-mono text-xs text-slate-700" 
+                />
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  type="submit" 
+                  className="px-4 py-1.8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs cursor-pointer shadow-xs"
+                >
+                  确定筛选
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowCustomPicker(false)}
+                  className="px-3 py-1.8 hover:bg-slate-50 text-slate-450 border border-slate-200 rounded-lg text-xs cursor-pointer"
+                >
+                  取消
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* METRIC OVERVIEW CARDS: Double Cards wide (Left sides) & Stacked Single Cards (Right sides) */}
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-5 select-none">
+        
+        {/* Card 1: Purchase Overview (col-span-2) */}
+        <div 
+          onClick={() => showToast(`🛒 筛选该统计周期内的采购合同。共采购计：${dashboardData.purchaseTotalQty.toLocaleString()} 件衣服`)}
+          className="lg:col-span-2 bg-gradient-to-br from-emerald-50/20 to-teal-50/5 border border-emerald-500/15 hover:border-emerald-500/40 rounded-3xl p-6 shadow-xs transition-all duration-300 hover:shadow-md cursor-pointer group relative overflow-hidden"
+        >
+          {/* Subtle icon outline in background like Stitch mockup */}
+          <ShoppingCart className="absolute right-4 bottom-4 w-28 h-28 text-emerald-500/5 group-hover:text-emerald-500/10 transition-colors pointer-events-none" />
+
+          <div className="relative">
+            <div className="flex items-center space-x-2 text-emerald-750 font-extrabold text-[12px] uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>PURCHASE OVERVIEW / 采购概况</span>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-4 border-b border-emerald-500/5 pb-5">
               <div>
-                <h4 className="font-extrabold text-slate-800 text-[12px] flex items-center gap-1.5 font-sans">
-                  <History className="w-4 h-4 text-indigo-600" />
-                  采购与历史到货过账入库趋势图 (近7天指标对齐)
-                </h4>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  系统跟踪折线：今日物理入库计数 (件数，左轴) | 立柱高度：到货过账货款估值转化 (万元，右轴) 
-                </p>
-              </div>
-
-              {/* Little legend pointers */}
-              <div className="flex items-center gap-3 text-[10px]">
-                <div className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 block shadow-xs" />
-                  <span className="text-slate-500 font-bold">实际入库数量 (件)</span>
+                <span className="text-[11px] text-slate-400 font-bold block">采购件数</span>
+                <div className="flex items-baseline mt-1.5">
+                  <span className="text-2xl md:text-3.5xl font-black text-[#012b24] font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
+                    {dashboardData.purchaseTotalQty.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-slate-450 font-bold ml-1">pcs</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded bg-emerald-450 block shadow-xs" />
-                  <span className="text-slate-500 font-bold">采购金额估值 (万元)</span>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 font-bold block">采购金额</span>
+                <div className="flex items-baseline mt-1.5">
+                  <span className="text-2xl md:text-3.5xl font-black text-emerald-700 font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
+                    ¥{dashboardData.purchaseTotalAmount.toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Handcrafted Responsive Pixel-Perfect Aesthetic SVG Chart area */}
-            <div className="relative w-full h-[190px] bg-slate-50/25 rounded-xl border border-slate-101 p-2 overflow-hidden">
-              <svg viewBox="0 0 500 180" className="w-full h-full" preserveAspectRatio="none">
-                {/* SVG Gradients definitions */}
-                <defs>
-                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.22" />
-                    <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.00" />
-                  </linearGradient>
-                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.85" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.2" />
-                  </linearGradient>
-                </defs>
-
-                {/* Background Grids horizontal and vertical */}
-                {[0, 1, 2, 3, 4].map(grid => {
-                  const yVal = 15 + (grid * 32);
-                  return (
-                    <line
-                      key={grid}
-                      x1="40"
-                      y1={yVal}
-                      x2="485"
-                      y2={yVal}
-                      stroke="#e2e8f0"
-                      strokeWidth="0.5"
-                      strokeDasharray="4 4"
-                    />
-                  );
-                })}
-
-                {/* Draw Columns for Values (Amounts in Myriad Yuan) */}
-                {historicalArrival7Days.map((val, idx) => {
-                  const barW = 12;
-                  const colX = 40 + (idx * (500 - 40 - 20) / (historicalArrival7Days.length - 1));
-                  const maxAmt = 20;
-                  const rectH = (val.value * (180 - 15 - 25) / maxAmt);
-                  const rectY = 180 - 25 - rectH;
-
-                  return (
-                    <g key={idx}>
-                      <rect
-                        x={colX - (barW / 2)}
-                        y={rectY}
-                        width={barW}
-                        height={rectH}
-                        rx="3"
-                        fill="url(#barGrad)"
-                        className="transition-all hover:opacity-100 opacity-90 cursor-help"
-                      >
-                        <title>交付账款金额过账: ¥{(val.value * 10000).toLocaleString()}</title>
-                      </rect>
-                    </g>
-                  );
-                })}
-
-                {/* Curves Line & Area representing quantities */}
-                <path
-                  d={(() => {
-                    const pts = historicalArrival7Days.map((d, index) => {
-                      const x = 40 + (index * (500 - 45) / (historicalArrival7Days.length - 1));
-                      const maxQty = 2450;
-                      const y = 180 - 25 - (d.count * (180 - 40) / maxQty);
-                      return { x, y };
-                    });
-                    return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                  })()}
-                  fill="none"
-                  stroke="#4f46e5"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-
-                {/* Gradient fill area beneath the quantity line */}
-                <path
-                  d={(() => {
-                    const pts = historicalArrival7Days.map((d, index) => {
-                      const x = 40 + (index * (500 - 45) / (historicalArrival7Days.length - 1));
-                      const maxQty = 2450;
-                      const y = 180 - 25 - (d.count * (180 - 40) / maxQty);
-                      return { x, y };
-                    });
-                    const str = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                    return `${str} L ${pts[pts.length - 1].x} 155 L 40 155 Z`;
-                  })()}
-                  fill="url(#areaGrad)"
-                />
-
-                {/* Nodes and Labels */}
-                {historicalArrival7Days.map((d, index) => {
-                  const x = 40 + (index * (500 - 45) / (historicalArrival7Days.length - 1));
-                  const maxQty = 2450;
-                  const y = 180 - 25 - (d.count * (180 - 40) / maxQty);
-
-                  return (
-                    <g key={index}>
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r="3.5"
-                        fill="#ffffff"
-                        stroke="#4f46e5"
-                        strokeWidth="1.8"
-                        className="hover:scale-150 transition-transform cursor-pointer"
-                      />
-                      <text
-                        x={x}
-                        y={y - 8}
-                        fontFamily="monospace"
-                        fontSize="8"
-                        fontWeight="bold"
-                        fill="#312e81"
-                        textAnchor="middle"
-                      >
-                        {d.count}
-                      </text>
-
-                      <text
-                        x={x}
-                        y="170"
-                        fontFamily="sans-serif"
-                        fontSize="8.5"
-                        fontWeight="bold"
-                        fill="#64748b"
-                        textAnchor="middle"
-                      >
-                        {d.date}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {["2.4k", "1.8k", "1.2k", "600"].map((tick, tIdx) => {
-                  return (
-                    <text
-                      key={tick}
-                      x="32"
-                      y={20 + (tIdx * 34)}
-                      fontFamily="sans-serif"
-                      fontSize="7"
-                      fontWeight="bold"
-                      fill="#94a3b8"
-                      textAnchor="end"
-                    >
-                      {tick}
-                    </text>
-                  );
-                })}
-              </svg>
-            </div>
-          </div>
-
-          {/* Category Breakdown Progress indicators */}
-          <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-extrabold text-slate-800 text-[11.5px] uppercase">
-                系统按类别采购占比核算
-              </h4>
-              <span className="text-[10px] text-slate-450 font-bold">总货值款：¥{procurementPresetData[dashboardTimeframe].totalAmount.toLocaleString()}</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {procurementPresetData[dashboardTimeframe].categories.map((c, idx) => {
-                const colorMap = idx === 0 ? "bg-indigo-600" : idx === 1 ? "bg-emerald-500" : "bg-sky-500";
-                const textMap = idx === 0 ? "text-indigo-700" : idx === 1 ? "text-emerald-700" : "text-sky-700";
-                const isSelected = selectedCategory === c.name;
-
-                return (
-                  <div 
-                    key={c.name}
-                    onClick={() => {
-                      setSelectedCategory(c.name);
-                      showToast(`已筛选大盘品类为: ${c.name}`);
-                    }}
-                    className={`p-3.5 border rounded-xl transition-all cursor-pointer ${
-                      isSelected 
-                        ? "border-indigo-300 bg-indigo-50/25 ring-1 ring-indigo-50" 
-                        : "border-slate-101 hover:border-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-705 text-[11px]">{c.name}</span>
-                      <span className={`text-[11px] ${textMap}`}>{c.ratio}%</span>
-                    </div>
-                    {/* ProgressBar */}
-                    <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
-                      <div className={`h-full ${colorMap}`} style={{ width: `${c.ratio}%` }} />
-                    </div>
-                    <div className="flex items-center justify-between text-[9.5px] text-slate-400 mt-2 font-medium">
-                      <span>预计件数: <strong className="text-slate-700 font-extrabold">{c.count.toLocaleString()}</strong></span>
-                      <span>分拨货款: <strong className="text-slate-705 font-bold font-mono">¥{c.amount.toLocaleString()}</strong></span>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="mt-4 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+              <span>采购计划交付总量分析</span>
+              <span className="text-emerald-700 font-extrabold group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
+                查看关联订单卷宗 →
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Column 2: Dashboard operational hub & actions (4/12 scope) */}
-        <div className="xl:col-span-4 space-y-6">
-          {/* Quick Navigation Gateways */}
-          <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs space-y-3.5">
-            <h4 className="font-extrabold text-slate-800 text-[11.5px] uppercase flex items-center gap-1">
-              <Plus className="w-4 h-4 text-indigo-600" />
-              管理入口主功能导航
-            </h4>
+        {/* Card 2: Inbound / Storage Overview (col-span-2) */}
+        <div 
+          onClick={() => showToast(`🏢 对应的仓储物流入库汇总。已过账入库款：${dashboardData.inboundTotalQty.toLocaleString()} 件`)}
+          className="lg:col-span-2 bg-gradient-to-br from-blue-50/20 to-sky-50/5 border border-blue-500/15 hover:border-blue-500/40 rounded-3xl p-6 shadow-xs transition-all duration-300 hover:shadow-md cursor-pointer group relative overflow-hidden"
+        >
+          {/* Subtle warehouse icon in background */}
+          <Warehouse className="absolute right-4 bottom-4 w-28 h-28 text-blue-500/5 group-hover:text-blue-500/10 transition-colors pointer-events-none" />
+
+          <div className="relative">
+            <div className="flex items-center space-x-2 text-blue-750 font-extrabold text-[12px] uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span>STORAGE OVERVIEW / 入库概况</span>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-4 border-b border-blue-500/5 pb-5">
+              <div>
+                <span className="text-[11px] text-slate-400 font-bold block">入库件数</span>
+                <div className="flex items-baseline mt-1.5">
+                  <span className="text-2xl md:text-3.5xl font-black text-[#012b24] font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
+                    {dashboardData.inboundTotalQty.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-slate-455 font-bold ml-1">pcs</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] text-slate-400 font-bold block">入库金额</span>
+                <div className="flex items-baseline mt-1.5">
+                  <span className="text-2xl md:text-3.5xl font-black text-blue-600 font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
+                    ¥{dashboardData.inboundTotalAmount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+              <span>已过账收货及结算进度统计</span>
+              <span className="text-blue-600 font-extrabold group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
+                对账核数结算板块 →
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Stacked Delivery Overdue & Quality Issues (Right Panel col-span-2) */}
+        <div className="lg:col-span-2 flex flex-col justify-between gap-4">
+          
+          {/* Card 3a: Delivery Overdue */}
+          <div 
+            onClick={() => showToast(`⚠️ 货期警示：当前有 ${dashboardData.overdueQty} 件商品已超出应交付日期，带来额外超时考核扣罚`)}
+            className="flex-grow bg-amber-50/15 hover:bg-amber-50/30 border border-amber-500/15 hover:border-amber-500/35 p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all duration-300 shadow-3xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-5 h-5 animate-[spin_20s_linear_infinite]" />
+              </div>
+              <div className="leading-tight">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">DELIVERY OVERDUE / 货期超时</span>
+                <div className="flex items-baseline mt-1 gap-1">
+                  <span className="text-xl font-extrabold text-amber-700 font-mono leading-none">
+                    {dashboardData.overdueQty.toLocaleString()}
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-bold font-sans">Items</span>
+                </div>
+              </div>
+            </div>
             
-            <p className="text-[10px] text-slate-450 leading-relaxed font-bold">
-              快速进入协同系统相关页面：
-            </p>
-
-            <div className="space-y-2.5 pt-1.5 select-none text-[11px] font-bold">
-              {/* Shortcut A */}
-              <button
-                onClick={() => {
-                  setShowDeliveryModal(true);
-                  showToast("🚀 已启用送货清点自主登记过账弹窗。");
-                }}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all hover:shadow-xs"
-              >
-                <UploadCloud className="w-4 h-4 animate-bounce" />
-                <span>入库登记 (到货自提登记)</span>
-              </button>
-
-              {/* Shortcut B */}
-              <button
-                onClick={() => {
-                  setActiveTab("我的订单");
-                  showToast("📂 进入我的订单详情页，查看排单生产中订单。");
-                }}
-                className="w-full py-3 bg-indigo-50 border border-indigo-150 hover:bg-indigo-100 text-indigo-755 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
-              >
-                <Truck className="w-4 h-4 text-indigo-650" />
-                <span>采购单详情 (生管单溯源)</span>
-              </button>
-
-              {/* Shortcut B2 -款式报价 */}
-              <button
-                onClick={() => {
-                  setActiveTab("款式报价");
-                  showToast("📂 进入我的款式报价，填报最新样品。");
-                }}
-                className="w-full py-3 bg-[#fafbfe]/70 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
-              >
-                <FileText className="w-4 h-4 text-slate-500" />
-                <span>款式报价与新版审单</span>
-              </button>
-
-              {/* Shortcut C */}
-              <button
-                onClick={() => {
-                  setActiveTab("对账结算");
-                  showToast("📊 切换至账单核对，查看往月已入库未结清明细。");
-                }}
-                className="w-full py-3 bg-slate-50 border border-slate-205 hover:bg-slate-100 text-slate-700 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
-              >
-                <DollarSign className="w-4 h-4 text-amber-653" />
-                <span>账单核对 (往来财务清算)</span>
-              </button>
+            <div className="text-right border-l border-amber-500/10 pl-4.5 min-w-[90px]">
+              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Penalty / 扣款</span>
+              <span className="text-xs font-bold text-rose-600 font-mono leading-none block mt-1.5">
+                ¥{dashboardData.overdueDeductionAmount.toLocaleString()}
+              </span>
             </div>
           </div>
 
-          {/* Timeline Activity Alerts logs */}
-          <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-extrabold text-slate-800 text-[11px] uppercase tracking-wide flex items-center gap-1.5">
-                <Bell className="w-4.5 h-4.5 text-indigo-650" />
-                生产交付消息通知箱
-              </h4>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            </div>
-
-            <div className="space-y-4 pl-1 pl-1.5 text-[10px] border-l border-slate-100 font-medium font-sans">
-              {todayArrivals.length > 3 && (
-                <div className="relative pl-3.5 space-y-0.5">
-                  <div className="absolute -left-[20.5px] top-1.5 w-1.6 h-1.6 rounded-full bg-emerald-600 border border-white" />
-                  <span className="text-slate-400 block font-mono text-[9px]">刚刚提交</span>
-                  <p className="text-slate-700 leading-normal font-bold">
-                    自主入库托运已呈交过账：对应清算流单 <code className="text-emerald-700 font-mono font-bold leading-none bg-emerald-50 px-1 py-0.5 rounded text-[8.5px]">{todayArrivals[0].id}</code>
-                  </p>
+          {/* Card 3b: Quality Issues */}
+          <div 
+            onClick={() => showToast(`🛡️ 质量退货：质量考核监控。共退货：${dashboardData.qualityReturnQty} 件`)}
+            className="flex-grow bg-rose-50/15 hover:bg-rose-50/30 border border-rose-500/15 hover:border-rose-500/35 p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all duration-300 shadow-3xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center flex-shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div className="leading-tight">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">QUALITY ISSUES / 质量瑕疵</span>
+                <div className="flex items-baseline mt-1 gap-1">
+                  <span className="text-xl font-extrabold text-rose-600 font-mono leading-none">
+                    {dashboardData.qualityReturnQty.toLocaleString()}
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-bold font-sans">Returns</span>
                 </div>
-              )}
-
-              <div className="relative pl-3.5 space-y-0.5">
-                <div className="absolute -left-[20.5px] top-1.5 w-1.6 h-1.6 rounded-full bg-indigo-650 border border-white" />
-                <span className="text-slate-400 block font-mono text-[9px]">今日 14:00 PM</span>
-                <p className="text-slate-700 leading-normal">
-                  极收清点已录入，物理件核发流水批次 <code className="text-indigo-600 font-mono font-bold leading-none bg-indigo-50 px-1 py-0.5 rounded text-[8.5px]">REC-20260528-03</code> (850件)
-                </p>
-              </div>
-
-              <div className="relative pl-3.5 space-y-0.5">
-                <div className="absolute -left-[20.5px] top-1.5 w-1.6 h-1.6 rounded-full bg-[#10b981] border border-white" />
-                <span className="text-slate-400 block font-mono text-[9px]">今日 09:30 AM</span>
-                <p className="text-slate-700 leading-normal">
-                  顺丰自派件已清点，对应账单流水 <code className="text-emerald-700 font-mono bg-emerald-50 px-1 py-0.5 rounded text-[8.5px]">REC-20260528-01</code> 已核发
-                </p>
-              </div>
-
-              <div className="relative pl-3.5 space-y-0.5">
-                <div className="absolute -left-[20.5px] top-1.5 w-1.6 h-1.6 rounded-full bg-amber-500 border border-white" />
-                <span className="text-slate-400 block font-mono text-[9px]">昨天 17:35 PM</span>
-                <p className="text-slate-700 leading-normal">
-                  王小悦接收了审单报价 <code className="text-slate-700 font-mono font-black bg-slate-50 px-1 py-0.5 rounded text-[8.5px]">LN-2024-W05</code>，工艺运行单已生成
-                </p>
               </div>
             </div>
-
-            <button
-              onClick={() => showToast("⚡ 系统已对准供应链最近43小时日志数据。")}
-              className="w-full py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-650 font-bold rounded-xl text-center transition-colors cursor-pointer"
-            >
-              刷新动态日志 (已完成同步)
-            </button>
-          </div>
-
-          {/* Direct Support Contact desk */}
-          <div className="p-4 bg-[#fafbfe]/55 border border-slate-101 rounded-2xl flex items-center justify-between text-[11px] leading-snug">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-805 border border-emerald-200 flex items-center justify-center font-black">
-                王
-              </div>
-              <div className="space-y-0.2 font-sans font-medium">
-                <span className="font-bold text-slate-800 block">采购对接人 - 王小悦</span>
-                <span className="text-[9.5px] text-slate-400 font-mono block">电话: 138-xxxx-5678</span>
-              </div>
+            
+            <div className="text-right border-l border-rose-500/10 pl-4.5 min-w-[90px]">
+              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Deduction / 惩罚</span>
+              <span className="text-xs font-bold text-rose-600 font-mono leading-none block mt-1.5">
+                ¥{dashboardData.qualityDeductionAmount.toLocaleString()}
+              </span>
             </div>
-            <a 
-              href="tel:13800005678" 
-              className="p-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-slate-500"
-              title="一键致电采购部"
-            >
-              <Phone className="w-3.5 h-3.5" />
-            </a>
           </div>
         </div>
+
       </div>
 
-      {/* Drill-down Verification Tabbed panels */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden flex flex-col p-5 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-100 pb-3">
-          <div className="space-y-0.5">
-            <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5 uppercase font-sans">
-              <FileText className="w-4 h-4 text-indigo-650" />
-              采购入库与提醒细节穿透层
-            </h4>
-            <p className="text-[10px] text-slate-400">
-              {selectedMetricCard === "none" && "💡 快速提示：点击上方的大数据卡片，可以自动在此穿透过滤下面的表格指标。"}
-              {selectedMetricCard === "procurement" && "🎯 当前已锁定高亮：【采购总览】穿透信息，显示核心 SKU 指标明细。"}
-              {selectedMetricCard === "todayArrival" && "🎯 当前已锁定高亮：【今日入库实收】已交付流水记录清单。"}
-              {selectedMetricCard === "pendingArrival" && "🎯 当前已锁定高亮：【待入仓缺额】与受阻物流预警清单，请加急排催。"}
-            </p>
+      {/* DELIVERY TIMELINE SECTION - Horizontal track design matching Stitch */}
+      <div id="timelineCard" className="bg-white border border-slate-150 rounded-3xl p-5 md:p-6 shadow-xs relative overflow-hidden">
+        
+        {/* Header segment */}
+        <div className="flex items-center justify-between mb-8 select-none flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-5 bg-emerald-600 rounded-xs inline-block" />
+            <h3 className="text-15px font-bold text-[#012b24] tracking-tight">Delivery Timeline / 货期时间轴</h3>
           </div>
 
-          {/* Search count pill or filter resets */}
-          {(selectedMetricCard !== "none" || selectedCategory !== "全部" || searchSKU !== "") && (
-            <button
-              onClick={() => {
-                setSelectedMetricCard("none");
-                setSelectedCategory("全部");
-                setSearchSKU("");
-                showToast("🧹 已成功撤销全部穿透过滤器，大盘恢复初态。");
-              }}
-              className="px-2.5 py-1 text-[9.5px] border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black rounded-lg transition-colors cursor-pointer"
-            >
-              清除所有穿透筛选
-            </button>
-          )}
-        </div>
-
-        {/* Drilldown tables */}
-        <div className="space-y-6">
-          {/* Table A: Today's Arrival Received list */}
-          {(selectedMetricCard === "none" || selectedMetricCard === "todayArrival") && (
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-[11px] font-extrabold">
-                <span className="text-emerald-700 flex items-center gap-1 leading-none font-bold">
-                  <span className="w-1.8 h-1.8 rounded-full bg-emerald-500 animate-ping inline-block" />
-                  ① 今日实收物理入库清点流水明细 (共 {todayArrivals.filter(arr => {
-                    const matchCat = selectedCategory === "全部" || arr.category === selectedCategory;
-                    const matchKeyword = !searchSKU || 
-                      arr.skuCode.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                      arr.poNo.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                      arr.id.toLowerCase().includes(searchSKU.toLowerCase());
-                    return matchCat && matchKeyword;
-                  }).length} 笔)
-                </span>
-                <span className="text-slate-450">实时汇总过账：¥{todayArrivals.filter(arr => {
-                  const matchCat = selectedCategory === "全部" || arr.category === selectedCategory;
-                  const matchKeyword = !searchSKU || 
-                    arr.skuCode.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                    arr.poNo.toLowerCase().includes(searchSKU.toLowerCase());
-                  return matchCat && matchKeyword;
-                }).reduce((sum, item) => sum + item.value, 0).toLocaleString()}</span>
-              </div>
-
-              <div className="overflow-x-auto text-[11px] font-medium leading-normal border border-slate-100 rounded-xl bg-slate-50/20">
-                <table className="w-full text-left border-collapse text-slate-600">
-                  <thead className="bg-[#f8f9fb] border-b border-slate-100 text-[10px] font-bold text-slate-450 uppercase">
-                    <tr>
-                      <th className="p-3 pl-4">到货过账流水号</th>
-                      <th className="p-3">关联采购单 PO</th>
-                      <th className="p-3">SKU 编号</th>
-                      <th className="p-3 text-center">规格/颜色</th>
-                      <th className="p-3 text-center">清点件数</th>
-                      <th className="p-3 text-center">系统对账状态</th>
-                      <th className="p-3 text-center">运输承运商</th>
-                      <th className="p-3 pr-4 text-right">入库实估金额</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {todayArrivals.filter(arr => {
-                      const matchCat = selectedCategory === "全部" || arr.category === selectedCategory;
-                      const matchKeyword = !searchSKU || 
-                        arr.skuCode.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                        arr.poNo.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                        arr.id.toLowerCase().includes(searchSKU.toLowerCase());
-                      return matchCat && matchKeyword;
-                    }).length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="p-6 text-center text-slate-400 font-medium">
-                          没有符合条件或搜索到货记录。您可以通过最右侧 “入库登记” 提交自主货包。
-                        </td>
-                      </tr>
-                    ) : (
-                      todayArrivals.filter(arr => {
-                        const matchCat = selectedCategory === "全部" || arr.category === selectedCategory;
-                        const matchKeyword = !searchSKU || 
-                          arr.skuCode.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                          arr.poNo.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                          arr.id.toLowerCase().includes(searchSKU.toLowerCase());
-                        return matchCat && matchKeyword;
-                      }).map(arr => (
-                        <tr key={arr.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="p-3 pl-4 font-bold text-slate-800 font-mono">{arr.id}</td>
-                          <td className="p-3 font-semibold text-slate-700 font-mono">{arr.poNo}</td>
-                          <td className="p-3 font-bold text-slate-800 font-mono tracking-tight">{arr.skuCode}</td>
-                          <td className="p-3 text-center">
-                            <span className="font-extrabold text-slate-700">{arr.colorName}</span> / {arr.sizeName}
-                          </td>
-                          <td className="p-3 text-center text-indigo-700 font-extrabold font-mono text-[11.5px]">{arr.qty} 件</td>
-                          <td className="p-3 text-center font-sans font-bold">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                              arr.status.includes("已清洗") || arr.status.includes("已过账") || arr.status.includes("已清点")
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                : "bg-sky-50 text-sky-700 border-sky-100 animate-pulse"
-                            }`}>
-                              {arr.status}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center text-slate-500">{arr.carrier} <span className="text-[8.5px] opacity-70 block font-mono mt-0.5">{arr.time}</span></td>
-                          <td className="p-3 pr-4 text-right font-black font-mono text-emerald-600">¥{arr.value.toLocaleString()}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Table B: Pending and Delays Exception Warning list */}
-          {(selectedMetricCard === "none" || selectedMetricCard === "pendingArrival") && (
-            <div className="space-y-2.5 pt-2">
-              <div className="flex items-center justify-between text-[11px] font-extrabold">
-                <span className="text-amber-600 flex items-center gap-1 leading-none font-bold">
-                  <span className="w-2.5 h-2.5 rounded bg-rose-500 animate-pulse inline-block" />
-                  ② 待交付到货计划与超期警示单 (共 {pendingArrivals.filter(arr => {
-                    const matchCat = selectedCategory === "全部" || arr.category === selectedCategory;
-                    const matchKeyword = !searchSKU || 
-                      arr.skuCode.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                      arr.poNo.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                      arr.reason.toLowerCase().includes(searchSKU.toLowerCase());
-                    return matchCat && matchKeyword;
-                  }).length} 笔)
-                </span>
-                <span className="text-rose-600">超期延迟比例较高，染厂正在干洗排期中</span>
-              </div>
-
-              <div className="overflow-x-auto text-[11px] font-medium leading-normal border border-slate-100 rounded-xl bg-rose-50/5">
-                <table className="w-full text-left border-collapse text-slate-600">
-                  <thead className="bg-[#fdfbfc] border-b border-slate-100 text-[10px] font-bold text-slate-450 uppercase">
-                    <tr>
-                      <th className="p-3 pl-4">采购单 PO</th>
-                      <th className="p-3">SKU 编号</th>
-                      <th className="p-3">对应颜色</th>
-                      <th className="p-3 text-center">采购定货数</th>
-                      <th className="p-3 text-center">待入仓库缺数</th>
-                      <th className="p-3 text-center">超期延滞天数</th>
-                      <th className="p-3 text-center">预警等级</th>
-                      <th className="p-3 pr-4 text-right">主要受阻滞后原因明细</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {pendingArrivals.filter(arr => {
-                      const matchCat = selectedCategory === "全部" || arr.category === selectedCategory;
-                      const matchKeyword = !searchSKU || 
-                        arr.skuCode.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                        arr.poNo.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                        arr.reason.toLowerCase().includes(searchSKU.toLowerCase());
-                      return matchCat && matchKeyword;
-                    }).length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="p-6 text-center text-slate-400 font-medium">
-                          未检索到采购延迟预警款式。
-                        </td>
-                      </tr>
-                    ) : (
-                      pendingArrivals.filter(arr => {
-                        const matchCat = selectedCategory === "全部" || arr.category === selectedCategory;
-                        const matchKeyword = !searchSKU || 
-                          arr.skuCode.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                          arr.poNo.toLowerCase().includes(searchSKU.toLowerCase()) || 
-                          arr.reason.toLowerCase().includes(searchSKU.toLowerCase());
-                        return matchCat && matchKeyword;
-                      }).map(arr => (
-                        <tr key={arr.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="p-3 pl-4 font-extrabold text-slate-800 font-mono">{arr.poNo}</td>
-                          <td className="p-3 font-extrabold text-slate-800 font-mono tracking-tight">{arr.skuCode}</td>
-                          <td className="p-3 font-semibold text-slate-700">{arr.colorName}</td>
-                          <td className="p-3 text-center font-mono">{arr.qty}</td>
-                          <td className="p-3 text-center font-extrabold font-mono text-rose-500 text-[11.5px]">{arr.pendingQty} 件</td>
-                          <td className="p-3 text-center font-sans font-bold">
-                            {arr.delayDays > 0 ? (
-                              <span className="text-rose-600 font-black flex items-center justify-center gap-0.5 animate-pulse">
-                                ⚠️ 延误 {arr.delayDays} 天
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 font-bold">按计划推进</span>
-                            )}
-                          </td>
-                          <td className="p-3 text-center font-sans font-black">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-wide ${
-                              arr.alertLevel === "high"
-                                ? "bg-rose-100 text-rose-700 border border-rose-300 animate-pulse"
-                                : arr.alertLevel === "medium"
-                                  ? "bg-amber-100 text-amber-600 border border-amber-300"
-                                  : "bg-sky-50 text-sky-700 border-sky-100"
-                            }`}>
-                              {arr.alertLevel === "high" ? "🚨 重度延迟" : arr.alertLevel === "medium" ? "⏳ 中途受阻" : "正常"}
-                            </span>
-                          </td>
-                          <td className="p-3 pr-4 text-right text-[10px] text-slate-500 font-sans max-w-[245px] truncate" title={arr.reason}>
-                            {arr.reason}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Table C: Original Core SKU Quality / Delivery Monitor (Preserving and Integrating) */}
-          {(selectedMetricCard === "none" || selectedMetricCard === "procurement") && (
-            <div className="space-y-2.5 pt-2">
-              <div className="flex items-center justify-between text-[11px] font-extrabold mb-1">
-                <span className="text-indigo-700 flex items-center gap-1 font-bold">
-                  <Package className="w-4 h-4 text-indigo-600" />
-                  ③ 核心款式工艺结算价挂牌穿透对账 (共 {filteredSkus.length} 款)
-                </span>
-                <div className="bg-slate-100 p-0.5 rounded-lg text-[9.5px] font-black">
-                  <button onClick={() => setViewMode("sku")} className={`px-2.5 py-0.5 rounded-md ${viewMode === "sku" ? "bg-white text-indigo-700 shadow-xs" : "text-slate-400"}`}>以SKU列</button>
-                  <button onClick={() => setViewMode("style")} className={`px-2.5 py-0.5 rounded-md ${viewMode === "style" ? "bg-white text-indigo-700 shadow-xs" : "text-slate-400"}`}>以款号列</button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto text-[11px] font-medium leading-normal border border-slate-100 rounded-xl">
-                <table className="w-full text-left border-collapse text-slate-600">
-                  <thead className="bg-[#fafbfc] border-b border-slate-100 text-[10px] font-bold text-slate-450 uppercase">
-                    {viewMode === "sku" ? (
-                      <tr>
-                        <th className="p-3 pl-4 font-bold">SKU ID</th>
-                        <th className="p-3 text-center">对应颜色</th>
-                        <th className="p-3 text-center">规格尺寸</th>
-                        <th className="p-3 text-center">提领出厂单价</th>
-                        <th className="p-3 text-center">大货运行状态</th>
-                        <th className="p-3 pr-4 text-right">核定详情</th>
-                      </tr>
-                    ) : (
-                      <tr>
-                        <th className="p-3 pl-4 font-bold">大货款号 (Style Number)</th>
-                        <th className="p-3">款式简要描述</th>
-                        <th className="p-3 text-center">工艺运行状态</th>
-                        <th className="p-3 pr-4 text-right">核定操作</th>
-                      </tr>
-                    )}
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 bg-white">
-                    {viewMode === "sku" ? (
-                      filteredSkus.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-6 text-center text-slate-400 font-medium">
-                            没能查到该款号。
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredSkus.map(s => (
-                          <tr key={s.sku} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="p-3 pl-4 font-bold text-slate-800 font-mono tracking-wide">{s.sku}</td>
-                            <td className="p-3 text-center">
-                              <div className="flex items-center justify-center">
-                                <div className={`w-11 h-6 rounded ${s.colorHex} shadow-xs border border-slate-100/40 relative flex items-center justify-center font-extrabold text-[8px] text-zinc-900 uppercase`}>
-                                  {s.colorName}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-3 text-center font-bold text-slate-705">{s.sizeName}</td>
-                            <td className="p-3 text-center font-bold font-mono text-slate-500">¥{s.cost.toFixed(2)}</td>
-                            <td className="p-3 text-center">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border ${
-                                s.status === "生产中" 
-                                  ? "bg-sky-50 text-sky-700 border-sky-100 animate-pulse" 
-                                  : s.status === "待质检" 
-                                    ? "bg-amber-5 text-amber-600 border-amber-100" 
-                                    : "bg-slate-100 text-slate-400 border-slate-200"
-                              }`}>
-                                {s.status}
-                              </span>
-                            </td>
-                            <td className="p-3 pr-4 text-right select-none">
-                              <button
-                                onClick={() => {
-                                  setSelectedSku(s.sku);
-                                  setModalType("detail");
-                                }}
-                                className="text-indigo-650 hover:text-indigo-850 font-black hover:underline cursor-pointer"
-                              >
-                                核心档案细节
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )
-                    ) : (
-                      filteredStyleGroups.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="p-6 text-center text-slate-400 font-medium">
-                            未检索到对应款式。
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredStyleGroups.map(g => {
-                          let styleName = "精品服饰款式";
-                          if (g.styleNo === "LN-2024-W01") styleName = "公主花边爬服款式";
-                          else if (g.styleNo === "LN-2024-W02") styleName = "双排扣纯羊毛高档童大衣";
-                          else if (g.styleNo === "LN-2501-M10") styleName = "丝光棉圆领极柔童装T恤";
-                          else if (g.styleNo === "LN-2024-W03") styleName = "纯针织雕花镂空开衫精选";
-
-                          return (
-                            <tr key={g.styleNo} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="p-3 pl-4 font-bold text-slate-800 font-mono tracking-wide">{g.styleNo}</td>
-                              <td className="p-3 text-slate-700 font-bold">{styleName}</td>
-                              <td className="p-3 text-center">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border ${
-                                  g.status === "生产中" 
-                                    ? "bg-sky-50 text-sky-700 border-sky-100 animate-pulse" 
-                                    : g.status === "待质检" 
-                                      ? "bg-amber-5 text-amber-600 border-amber-100" 
-                                      : "bg-slate-100 text-slate-400 border-slate-200"
-                                  }`}>
-                                    {g.status}
-                                  </span>
-                                </td>
-                                <td className="p-3 pr-4 text-right select-none">
-                                  <button
-                                    onClick={() => {
-                                      setSelectedSku(g.styleNo);
-                                      setModalType("detail");
-                                    }}
-                                    className="text-indigo-600 hover:text-indigo-800 font-black hover:underline cursor-pointer"
-                                  >
-                                    挂牌细节参数
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+          {/* Legend indicators */}
+          <div className="flex items-center gap-4 text-[11px] font-black tracking-normal">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block border border-rose-600" />
+              <span className="text-slate-500">Overdue / 已超时</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-450 inline-block border border-amber-600" />
+              <span className="text-slate-500">Risk / 生产异常</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block border border-emerald-600" />
+              <span className="text-slate-500">Healthy / 即将交付</span>
+            </span>
           </div>
         </div>
 
-        {/* Dialog A: 到货发货物理清点登记表单 */}
-        <AnimatePresence>
-          {showDeliveryModal && (
-            <div className="fixed inset-0 bg-[#001025]/60 flex items-center justify-center z-[1000] p-4 select-none animate-[fadeIn_0.2s_ease-out]">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5"
-              >
-                <div className="flex items-center justify-between border-b border-slate-50 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                      <UploadCloud className="w-4 h-4" />
+        {/* Overdue/Upcoming Outer Indicator Labels */}
+        <div className="hidden lg:flex items-center justify-between absolute left-5 right-5 top-[154px] pointer-events-none select-none">
+          <div className="flex items-center gap-1 bg-rose-50 border border-rose-200 px-2 py-0.8 rounded-md text-[9px] font-bold text-rose-600 animate-pulse">
+            <AlertCircle className="w-3 h-3 text-rose-500" /> OVERDUE
+          </div>
+          <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.8 rounded-md text-[9px] font-bold text-emerald-600">
+            <CheckCircle className="w-3 h-3 text-emerald-500" /> UPCOMING
+          </div>
+        </div>
+
+        {/* Scrollable Timeline Grid Base Line */}
+        <div className="overflow-x-auto pb-4 scrollbar-thin select-none">
+          <div className="min-w-[950px] relative h-[210px] flex items-center justify-between px-8">
+            
+            {/* Center horizontal line */}
+            <div className="absolute left-6 right-6 top-[130px] h-[3px] bg-slate-200" />
+
+            {/* Render each node slot in dashboardData */}
+            {dashboardData.timelineItems.map((node, index) => {
+              const nodeKey = `node-${node.date}-${index}`;
+              const isHovered = hoveredTimelineNode === nodeKey;
+
+              // Color configurations based on colorType
+              const ringColor = 
+                node.colorType === "red" ? "border-rose-500 bg-rose-50" : 
+                node.colorType === "yellow" ? "border-amber-450 bg-amber-50/40" : 
+                node.colorType === "blue" ? "border-blue-500 bg-blue-50/40" :
+                node.colorType === "green" ? "border-emerald-500 bg-emerald-50/45" : "border-slate-300 bg-slate-100";
+              const tagColor = 
+                node.colorType === "red" ? "bg-rose-500 text-white" : 
+                node.colorType === "yellow" ? "bg-amber-450 text-white" : 
+                node.colorType === "blue" ? "bg-blue-600 text-white" :
+                node.colorType === "green" ? "bg-emerald-600 text-white" : "bg-slate-400 text-white";
+
+              return (
+                <div 
+                  key={nodeKey}
+                  className="flex flex-col items-center relative flex-1"
+                  style={{ zIndex: isHovered ? 50 : 10 }}
+                >
+                  
+                  {/* Item Above: SKU Card details if any item exists on date */}
+                  {node.sku ? (
+                    <div 
+                      onMouseEnter={() => setHoveredTimelineNode(nodeKey)}
+                      onMouseLeave={() => setHoveredTimelineNode(null)}
+                      onClick={() => {
+                        // Find matching pending detail item or fallback mock
+                        const found = dashboardData.pendingItems.find(p => p.sku === node.sku) || {
+                          sku: node.sku,
+                          name: node.name || "示例服装衬衫",
+                          imageUrl: node.image || "dress_pink",
+                          category: "女童服饰",
+                          purchaseQty: node.qty || 300,
+                          storedQty: Math.floor((node.qty || 300) * 0.7),
+                          remainingQty: Math.floor((node.qty || 300) * 0.3),
+                          unitPrice: 65,
+                          amount: (node.qty || 300) * 65,
+                          dueDate: `2026-${node.date.replace("/", "-")}`,
+                          status: node.colorType === "red" ? "OVERDUE" : "PRODUCING",
+                          overdueDays: node.colorType === "red" ? 3 : 0,
+                          overdueDeduction: node.colorType === "red" ? 1200 : 0,
+                          qualityReturns: 0,
+                          qualityDeduction: 0,
+                          lastInboundTime: "2026-05-24",
+                          supplierName: "杭州织锦服饰有限公司"
+                        } as DetailedSkuInfo;
+                        setActiveDrawerItem(found);
+                      }}
+                      className="absolute bottom-[92px] w-[90px] xl:w-[100px] flex flex-col items-center cursor-pointer group"
+                    >
+                      {/* Interactive hover detail overlay popover */}
+                      <AnimatePresence>
+                        {isHovered && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            transition={{ duration: 0.12 }}
+                            className="absolute bottom-[104%] w-[210px] bg-[#0c1e34] text-white rounded-xl p-3 shadow-2xl z-50 text-[10.5px] leading-relaxed border border-white/10"
+                          >
+                            <span className={`text-[8px] font-extrabold uppercase px-1.8 py-0.5 rounded-sm mb-1.5 inline-block ${tagColor}`}>
+                              {node.status}
+                            </span>
+                            <p className="font-extrabold truncate text-white">{node.sku}</p>
+                            <p className="text-[9.5px] text-slate-300 font-medium truncate mt-0.5">{node.name}</p>
+                            <div className="grid grid-cols-2 gap-1.5 mt-2 pt-1.5 border-t border-white/5 font-mono text-[9px] text-slate-400">
+                              <div>已入库: <span className="text-emerald-400">{(node.qty || 0) * 2}件</span></div>
+                              <div>采购件: <span className="text-white">{node.qty}件</span></div>
+                            </div>
+                            <span className="text-[8px] font-black text-amber-300 block mt-1.5">💡 点击单元格可展开高阶档案面板</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Header Badge tag (e.g. OVERDUE, RISK, HEALTHY) */}
+                      <span className={`text-[8.5px] font-bold uppercase py-0.5 px-2 rounded-md tracking-wider shadow-2xs mb-1.5 select-none ${tagColor} transition-all group-hover:scale-105`}>
+                        {node.colorType === "red" ? "OVERDUE" : node.colorType === "yellow" ? "RISK" : "HEALTHY"}
+                      </span>
+
+                      {/* Apparel Card with thumbnail */}
+                      <div className={`w-[66px] h-[66px] rounded-2xl border-2 flex items-center justify-center p-1.5 text-center shadow-xs transition-all duration-350 bg-white group-hover:-translate-y-1 group-hover:shadow-md ${ringColor} ${isHovered ? "ring-4 ring-emerald-50" : ""}`}>
+                        {renderApparelSVGPlaceholder(node.image || "", "text-slate-500 opacity-85 group-hover:scale-108 transition-all")}
+                      </div>
                     </div>
-                    <h4 className="text-slate-800 font-extrabold text-[13px]">
-                      物理到货签收过账登记 (实收录入)
-                    </h4>
+                  ) : null}
+
+                  {/* Item Above: Overlapping badge items (+3) */}
+                  {node.hasOverlappingItems ? (
+                    <div 
+                      onMouseEnter={() => setHoveredTimelineNode(nodeKey)}
+                      onMouseLeave={() => setHoveredTimelineNode(null)}
+                      onClick={() => showToast(`📦 2026-05-31 该日期下共有 ${node.itemCount} 款交付商品：包含抗菌童袜、加绒长内衣等，可查阅下方表格进行对数。`)}
+                      className="absolute bottom-[92px] w-[90px] flex flex-col items-center cursor-pointer group"
+                    >
+                      <AnimatePresence>
+                        {isHovered && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute bottom-[84%] w-[200px] bg-[#0c1e34] text-white rounded-xl p-3.5 shadow-2xl z-50 text-[10px] leading-relaxed border border-white/5"
+                          >
+                            <span className="text-[8.5px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-sm block w-fit mb-2">
+                              合并重叠款数 ({node.itemCount} 款)
+                            </span>
+                            <div className="space-y-1 text-slate-300 font-medium">
+                              <p>• LN-2026-M10-WT-110 (White 童袜)</p>
+                              <p>• LN-2026-K12-BK-90 (Black 外套)</p>
+                              <p>• LN-2026-K12-RD-85 (Red 打底)</p>
+                            </div>
+                            <span className="text-[8px] text-slate-400 block mt-2 pt-1 border-t border-white/5">合并排单交货，避免库存阻滞</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <span className="text-[8.5px] font-black py-0.5 px-2 rounded-md bg-slate-500 text-white tracking-wider mb-2">
+                        MERGED
+                      </span>
+
+                      {/* Stacked cards effect */}
+                      <div className="relative w-[60px] h-[60px]">
+                        <div className="absolute top-1.5 left-1.5 w-full h-full rounded-2xl bg-slate-300/30 border border-slate-300/50" />
+                        <div className="absolute top-0.75 left-0.75 w-full h-full rounded-2xl bg-indigo-500/10 border border-[#0d3f34]/15" />
+                        <div className="absolute top-0 left-0 w-full h-full rounded-2xl bg-[#0c2e36] text-white flex items-center justify-center border border-[#0d3f34] shadow-sm transform group-hover:-translate-y-1 transition-all">
+                          <span className="font-bold text-center text-xs">+{node.itemCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Today Indicator Capsule (Direct pointer) */}
+                  {node.isToday ? (
+                    <div className="absolute bottom-[92px] w-[110px] flex flex-col items-center">
+                      <div className="bg-[#0b1c30] text-white text-[9.5px] font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                        <span>Today (5/27)</span>
+                      </div>
+                      {/* Downward connecting vertical arrow */}
+                      <div className="w-[1.5px] h-9 bg-[#0b1c30] mt-1 relative flex justify-center">
+                        <div className="absolute bottom-0 w-1.5 h-1.5 bg-[#0b1c30] rounded-full" />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Timeline node dot mapping on center line */}
+                  <div className="h-[28px] flex items-center justify-center relative translate-y-[13px]">
+                    <div 
+                      className={`w-3.5 h-3.5 rounded-full border-2 transition-all cursor-pointer ${
+                        node.isToday ? "bg-[#0b1c30] border-[#0b1c30] scale-120 animate-pulse z-40" : 
+                        node.colorType === "red" ? "bg-rose-500 border-rose-300" :
+                        node.colorType === "yellow" ? "bg-amber-400 border-amber-300" :
+                        node.colorType === "green" ? "bg-emerald-500 border-emerald-450" :
+                        node.hasOverlappingItems ? "bg-teal-700 border-teal-550" : "bg-white border-slate-350"
+                      }`}
+                      title={node.date}
+                    />
                   </div>
+
+                  {/* Date Label (Under the centerline) */}
+                  <span className={`text-[10.5px] font-mono font-bold mt-[26px] ${
+                    node.isToday ? "text-[#0b1c30] font-black" : "text-slate-400"
+                  }`}>
+                    {node.date}
+                  </span>
+
+                </div>
+              );
+            })}
+
+          </div>
+        </div>
+
+      </div>
+
+      {/* PENDING DELIVERY ITEMS TABLE - Interactive data table matching Stitch */}
+      <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-xs">
+        
+        {/* Table Toolbar section */}
+        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 select-none">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-5 bg-emerald-600 rounded-xs inline-block" />
+            <h3 className="text-15px font-bold text-[#012b24] tracking-tight">Pending Delivery Items / 待交付商品明细</h3>
+          </div>
+
+          <div className="flex items-center gap-3.5 w-full md:w-auto">
+            
+            {/* Search filter inline */}
+            <div className="relative flex-grow md:flex-grow-0 w-full md:w-60 rounded-xl border border-slate-200 py-1.5 pl-8 pr-3 bg-slate-50 focus-within:bg-white focus-within:border-emerald-600 transition-all">
+              <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="搜索款号、SKU识别码..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent outline-none text-[11px] font-sans placeholder-slate-400 text-slate-700 font-medium"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-2 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter control badge */}
+            <button 
+              onClick={() => showToast("🛠️ 已执行数据过滤过滤规则")}
+              className="p-1 px-3 py-2 rounded-xl border border-slate-205 hover:bg-slate-50 font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer text-[11px] flex items-center gap-1"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>筛选</span>
+            </button>
+
+            {/* Export control inline */}
+            <button 
+              onClick={() => showToast("📥 正在向云端发起申请：导出当前登录供应商的商品对数明细表.xlsx")}
+              className="p-1 px-3 py-2 rounded-xl border border-slate-205 hover:bg-slate-50 font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer text-[11px] flex items-center gap-1"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>导出</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dense Responsive Data Table */}
+        <div className="overflow-x-auto text-[11.5px] font-medium leading-normal">
+          <table className="w-full text-left border-collapse text-slate-650">
+            <thead className="bg-slate-50/70 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase font-sans tracking-wider">
+              <tr>
+                <th className="p-4 pl-6 text-center w-[90px]">Product / 商品</th>
+                <th className="p-4">SKU / Name / 款号</th>
+                <th className="p-4 text-center">Purchase Qty / 采购数</th>
+                <th className="p-4 text-center">Stored Qty / 已入库</th>
+                <th className="p-4 text-center">Remaining / 待入库</th>
+                <th className="p-4 text-right">Amount / 采购金额</th>
+                <th className="p-4 text-center">Due Date / 交付交期</th>
+                <th className="p-4 text-center">Status / 交付状态</th>
+                <th className="p-4 text-center pr-6">Action / 操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/60 font-medium">
+              {filteredPendingItems.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-400 font-medium">
+                    没有找到该时间筛选范围或匹配条件的未交付商品款号。
+                  </td>
+                </tr>
+              ) : (
+                filteredPendingItems.map((item, idx) => {
+                  const hasOverdue = item.status === "OVERDUE";
+                  const isProducing = item.status === "PRODUCING";
+                  const isStoring = item.status === "STORING";
+                  const isUpcoming = item.status === "UPCOMING";
+                  const isCompleted = item.status === "COMPLETED";
+
+                  return (
+                    <tr 
+                      key={`${item.sku}-${idx}`} 
+                      className="hover:bg-slate-50/50 transition-colors"
+                    >
+                      {/* PRODUCT IMAGE SELECTOR WITH STYLED PLACEHOLDER PATTERN */}
+                      <td className="p-3 pl-6 text-center">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+                          hasOverdue ? "border-rose-100 bg-rose-50/40 text-rose-500" :
+                          isProducing ? "border-amber-100 bg-amber-50/30 text-amber-600" :
+                          isStoring ? "border-blue-100 bg-blue-50/40 text-blue-500" :
+                          "border-slate-100 bg-slate-50 text-slate-500"
+                        }`}>
+                          {renderApparelSVGPlaceholder(item.imageUrl, "w-6 h-6")}
+                        </div>
+                      </td>
+
+                      {/* SKU / NAME DETAILS */}
+                      <td className="p-4">
+                        <div className="font-extrabold text-[#012b24] font-mono tracking-tight text-[12.5px]">
+                          {item.sku}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-semibold truncate max-w-[210px] mt-0.5">
+                          {item.name}
+                        </div>
+                      </td>
+
+                      {/* PURCHASE QUANTITY COL */}
+                      <td className="p-4 text-center font-bold text-[#0b1c30] font-mono">
+                        {item.purchaseQty.toLocaleString()} 件
+                      </td>
+
+                      {/* STORED QUANTITY COL */}
+                      <td className="p-4 text-center font-mono text-slate-600">
+                        {item.storedQty.toLocaleString()} 件 / <span className="text-[9.5px] font-bold text-slate-400">{(Math.round((item.storedQty / item.purchaseQty) * 100))}%</span>
+                      </td>
+
+                      {/* REMAINING UNSTORED QUANTITY COL (Colored dynamically for risk mitigation) */}
+                      <td className="p-4 text-center font-mono">
+                        {item.remainingQty === 0 ? (
+                          <span className="text-emerald-600 font-extrabold font-sans">已清点完毕</span>
+                        ) : (
+                          <span className={`font-black ${
+                            hasOverdue ? "text-rose-600" :
+                            isProducing ? "text-amber-500" : "text-slate-700"
+                          }`}>
+                            {item.remainingQty.toLocaleString()} 件
+                          </span>
+                        )}
+                      </td>
+
+                      {/* TOTAL AMOUNT FOR PURCHASE */}
+                      <td className="p-4 text-right font-extrabold font-mono text-slate-700">
+                        ¥{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+
+                      {/* DELIVERABLE DUE DATE */}
+                      <td className="p-4 text-center font-mono font-bold text-[#012b24] whitespace-nowrap">
+                        {item.dueDate}
+                      </td>
+
+                      {/* STATUS BADGES */}
+                      <td className="p-4 text-center whitespace-nowrap">
+                        {hasOverdue && (
+                          <span className="px-2.5 py-1 rounded-md text-[9px] font-black tracking-wider border border-rose-200 bg-rose-50 text-rose-600">
+                            已超时
+                          </span>
+                        )}
+                        {isProducing && (
+                          <span className="px-2.5 py-1 rounded-md text-[9px] font-black tracking-wider border border-amber-200 bg-amber-50 text-amber-600">
+                            生产中
+                          </span>
+                        )}
+                        {isStoring && (
+                          <span className="px-2.5 py-1 rounded-md text-[9px] font-black tracking-wider border border-blue-200 bg-blue-50 text-blue-600">
+                            部分入库
+                          </span>
+                        )}
+                        {isUpcoming && (
+                          <span className="px-2.5 py-1 rounded-md text-[9px] font-black tracking-wider border border-emerald-200 bg-emerald-50 text-emerald-600">
+                            即将交付
+                          </span>
+                        )}
+                        {isCompleted && (
+                          <span className="px-2.5 py-1 rounded-md text-[9px] font-black tracking-wider border border-slate-200 bg-slate-50 text-slate-500">
+                            已完成
+                          </span>
+                        )}
+                      </td>
+
+                      {/* SYSTEM ACTION FOR MODALS/DRAWERS */}
+                      <td className="p-4 text-center">
+                        <button
+                          onClick={() => {
+                            setActiveDrawerItem(item);
+                            showToast(`📂 已选中 ${item.sku} 展开高精度联查账期抽屉面`);
+                          }}
+                          className="px-3 py-1.5 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 text-[#012b24] font-black rounded-lg transition-all cursor-pointer text-[10.5px] items-center gap-1 inline-flex"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>明细</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer pagination bar matching mockup style */}
+        <div className="h-12 bg-slate-50 border-t border-slate-100 flex items-center justify-between px-6 select-none font-sans">
+          <span className="text-[10px] text-slate-400 font-bold">
+            显示 1 至 {filteredPendingItems.length} 条数据 (总共及过滤后)
+          </span>
+          <div className="flex items-center space-x-1.5 text-[10px]">
+            <button className="px-2 py-1 rounded-md border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 cursor-pointer">
+              上一页
+            </button>
+            <button className="px-2.5 py-1 rounded-md bg-[#012b24] text-white font-bold">
+              1
+            </button>
+            <button className="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 cursor-pointer">
+              2
+            </button>
+            <button className="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 cursor-pointer">
+              3
+            </button>
+            <button className="px-2 py-1 rounded-md border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 cursor-pointer">
+              下一页
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      {/* HIGHEST FIDELITY RIGHT DETAILED DRAWER FOR SKU DETAILS (Slideover pattern) */}
+      <AnimatePresence>
+        {activeDrawerItem && (
+          <>
+            {/* Dark blur veil */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveDrawerItem(null)}
+              className="fixed inset-0 bg-black/45 backdrop-blur-xs z-[1000]"
+            />
+
+            {/* Sliding Panel */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 220 }}
+              className="fixed inset-y-0 right-0 w-[420px] md:w-[480px] bg-white text-[#0b1c30] z-[1010] shadow-2xl overflow-hidden flex flex-col font-sans"
+            >
+              
+              {/* Drawer Header with Close */}
+              <div className="p-5 border-b border-slate-100 bg-[#f8f9ff] flex items-center justify-between">
+                <div>
+                  <span className="inline-block px-2.5 py-0.8 rounded-md text-[9px] font-black uppercase tracking-wider mb-2 bg-[#012b24] text-white">
+                    SKU 智能联查档案
+                  </span>
+                  <h3 className="text-15px font-black tracking-tight text-[#012b24] font-mono">
+                    {activeDrawerItem.sku}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setActiveDrawerItem(null)}
+                  className="p-1.5 hover:bg-slate-100 rounded-full text-slate-450 hover:text-slate-800 transition-colors cursor-pointer"
+                  title="关闭明细面板"
+                >
+                  <X className="w-5.5 h-5.5" />
+                </button>
+              </div>
+
+              {/* Drawer Body scrollable */}
+              <div className="flex-grow overflow-y-auto p-5 md:p-6 space-y-5.5">
+                
+                {/* Visual Garment block */}
+                <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center flex-shrink-0 bg-white ${
+                    activeDrawerItem.status === "OVERDUE" ? "border-rose-200 text-rose-500" : "border-slate-200 text-slate-650"
+                  }`}>
+                    {renderApparelSVGPlaceholder(activeDrawerItem.imageUrl, "w-10 h-10")}
+                  </div>
+                  <div>
+                    <h4 className="text-13px font-bold text-slate-800 leading-tight">
+                      {activeDrawerItem.name}
+                    </h4>
+                    <span className="text-[10px] text-slate-450 block mt-1">
+                      品类分类：<span className="font-semibold text-slate-600">{activeDrawerItem.category}</span>
+                    </span>
+                    <span className="text-[9.5px] font-mono text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full inline-block mt-2 font-bold select-all">
+                      合作商: {activeDrawerItem.supplierName}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Main quantities grid card */}
+                <div className="space-y-3.5">
+                  <h5 className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">
+                    核心排进度对数 / Quantities Analysis
+                  </h5>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    
+                    {/* Qty 1 */}
+                    <div className="bg-slate-50/70 p-3.5 rounded-xl border border-slate-100 text-center">
+                      <span className="text-[10px] font-bold text-slate-400 block">采购合同件</span>
+                      <span className="text-[16px] font-extrabold text-[#012b24] font-mono block mt-1.5 leading-none">
+                        {activeDrawerItem.purchaseQty.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Qty 2 */}
+                    <div className="bg-emerald-50/15 p-3.5 rounded-xl border border-emerald-500/10 text-center">
+                      <span className="text-[10px] font-bold text-slate-400 block">实到入库件</span>
+                      <span className="text-[16px] font-extrabold text-emerald-600 font-mono block mt-1.5 leading-none">
+                        {activeDrawerItem.storedQty.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Qty 3 */}
+                    <div className="bg-rose-50/15 p-3.5 rounded-xl border border-rose-500/10 text-center">
+                      <span className="text-[10px] font-bold text-slate-400 block">待收未到件</span>
+                      <span className={`text-[16px] font-extrabold font-mono block mt-1.5 leading-none ${
+                        activeDrawerItem.status === "OVERDUE" ? "text-rose-600 animate-pulse" : "text-slate-700"
+                      }`}>
+                        {activeDrawerItem.remainingQty.toLocaleString()}
+                      </span>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Sub Financial Details */}
+                <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5.5 space-y-4">
+                  <h5 className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">
+                    采购单结算明细 / Cost Breakdown
+                  </h5>
+                  
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between border-b border-dashed border-slate-200/80 pb-2.5">
+                      <span className="text-slate-450 font-bold">采购单价 (CNY / Cost)</span>
+                      <span className="font-extrabold text-[#012b24] font-mono">
+                        ¥{activeDrawerItem.unitPrice.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between border-b border-dashed border-slate-200/80 pb-2.5">
+                      <span className="text-slate-455 font-bold">采购意向合计款</span>
+                      <span className="font-extrabold text-emerald-700 font-mono text-[13px]">
+                        ¥{activeDrawerItem.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between border-b border-dashed border-slate-200/80 pb-2.5">
+                      <span className="text-slate-455 font-bold">计划交货应交付日期</span>
+                      <span className="font-extrabold text-slate-700 font-mono whitespace-nowrap">
+                        📅 {activeDrawerItem.dueDate}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-455 font-bold">当前货期状态</span>
+                      <div>
+                        {activeDrawerItem.status === "OVERDUE" && (
+                          <span className="px-2 py-0.5 rounded-sm bg-rose-500 text-white font-bold font-mono text-[9px]">
+                            已超时 OVERDUE
+                          </span>
+                        )}
+                        {activeDrawerItem.status === "PRODUCING" && (
+                          <span className="px-2 py-0.5 rounded-sm bg-amber-450 text-white font-bold font-mono text-[9px]">
+                            生产中 PRODUCING
+                          </span>
+                        )}
+                        {activeDrawerItem.status === "STORING" && (
+                          <span className="px-2 py-0.5 rounded-sm bg-blue-600 text-white font-bold font-mono text-[9px]">
+                            部分入库 STORING
+                          </span>
+                        )}
+                        {activeDrawerItem.status === "UPCOMING" && (
+                          <span className="px-2 py-0.5 rounded-sm bg-emerald-600 text-white font-bold font-mono text-[9px]">
+                            即将交付 UPCOMING
+                          </span>
+                        )}
+                        {activeDrawerItem.status === "COMPLETED" && (
+                          <span className="px-2 py-0.5 rounded-sm bg-slate-400 text-white font-bold font-mono text-[9px]">
+                            已结款 COMPLETED
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Risk and penalty calculations card */}
+                {activeDrawerItem.status === "OVERDUE" && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl space-y-2">
+                    <div className="flex items-center gap-2 text-rose-700 font-extrabold text-[11.5px]">
+                      <AlertTriangle className="w-4 h-4 text-rose-500 animate-[bounce_1.5s_infinite]" />
+                      <span>异常行为：货期延期扣款警示</span>
+                    </div>
+                    <p className="text-[10px] text-rose-600 leading-relaxed font-semibold">
+                      当前订单已超出交期 <span className="font-mono text-xs font-black">{activeDrawerItem.overdueDays} 天</span>。
+                      根据供应链延迟入库通用罚则，每日递增扣罚 ¥10.00/件。累计估算货期扣款计：
+                      <span className="font-mono text-xs font-black block mt-1.5 text-[14px]">
+                        ¥{activeDrawerItem.overdueDeduction.toLocaleString()} 元
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Damage / Complaint details */}
+                <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5.5 space-y-4">
+                  <h5 className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">
+                    品质考核异常 / Quality Returns & Fees
+                  </h5>
+                  <div className="grid grid-cols-2 gap-3 font-mono text-xs text-slate-650">
+                    <div className="border-r border-slate-200/70 p-1">
+                      <span>品质退货数量:</span>
+                      <p className="text-sm font-extrabold text-slate-800 mt-1">
+                        {activeDrawerItem.qualityReturns} 件
+                      </p>
+                    </div>
+                    <div className="p-1 pl-4">
+                      <span>质量直接扣款:</span>
+                      <p className="text-sm font-extrabold text-rose-605 mt-1">
+                        ¥{activeDrawerItem.qualityDeduction.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-[9px] text-slate-400 leading-normal pl-1 border-l-2 border-emerald-500">
+                    品质退换货与面料残损相关，若有疑义可拨采购排程专线或在线申请对账调整。
+                  </div>
+                </div>
+
+                {/* Logistics Trace or Last Inbound */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                    最新过账记录 / Last Activity Log
+                  </span>
+                  <div className="p-3 bg-slate-55 rounded-xl border border-slate-100 text-xs text-slate-500 flex items-center gap-2 font-medium">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                    <span>物流货单最近过账清点时间：</span>
+                    <span className="font-extrabold text-slate-700 font-mono">
+                      {activeDrawerItem.lastInboundTime}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action CTA list in drawer */}
+                <div className="pt-3 flex gap-2">
                   <button
-                    onClick={() => setShowDeliveryModal(false)}
-                    className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-full hover:bg-slate-50"
+                    onClick={() => {
+                      setActiveDrawerItem(null);
+                      setActiveTab("对账结算");
+                      showToast(`🧾 正在跳转账期核数板块对账，核算 SKU [${activeDrawerItem.sku}]`);
+                    }}
+                    className="flex-grow py-2.5 bg-[#012b24] hover:bg-[#07362e] text-white font-bold rounded-xl text-center select-none cursor-pointer transition-all text-xs"
                   >
-                    <X className="w-5 h-5" />
+                    前往对账结算
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveDrawerItem(null);
+                      showToast("📞 正在呼叫采购跟单专员：王工 (138-xxxx-5678) 咨询交货异议...");
+                    }}
+                    className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl text-center select-none cursor-pointer transition-all text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>跟单复议</span>
                   </button>
                 </div>
 
-                <form
-                  onSubmit={e => {
-                    e.preventDefault();
-                    const qtyInt = parseInt(deliveryForm.qty) || 200;
-                    const matchedSku = skus.find(s => s.sku === deliveryForm.skuCode);
-                    const costVal = matchedSku ? matchedSku.cost : 50.00;
-                    const calculatedVal = qtyInt * costVal;
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-                    const newRec = {
-                      id: `REC-20260528-${Math.floor(100 + Math.random() * 900)}`,
-                      poNo: deliveryForm.poNo,
-                      skuCode: deliveryForm.skuCode,
-                      styleNo: deliveryForm.skuCode.split('-').slice(0, 3).join('-') || "LN-2024-W01",
-                      colorName: matchedSku ? matchedSku.colorName : "雅致粉",
-                      sizeName: matchedSku ? matchedSku.sizeName.split(' ')[0] : "80码",
-                      qty: qtyInt,
-                      category: deliveryForm.skuCode.includes("W01") ? "女童连衣裙" : deliveryForm.skuCode.includes("W02") ? "童装外套" : "精柔内衣裤",
-                      status: "清点待转账结算",
-                      cost: costVal,
-                      value: calculatedVal,
-                      carrier: deliveryForm.carrier,
-                      time: "刚刚记账"
-                    };
-
-                    setTodayArrivals([newRec, ...todayArrivals]);
-                    setShowDeliveryModal(false);
-                    showToast(`🎉 成功录入！到货清点: ${qtyInt}件，账款估值: ¥${calculatedVal.toLocaleString()}。`);
-                  }}
-                  className="space-y-4 text-xs font-semibold"
-                >
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 text-[10px] font-black uppercase text-left block mb-1">采购单 PO 号码</label>
-                      <select
-                        value={deliveryForm.poNo}
-                        onChange={e => setDeliveryForm({ ...deliveryForm, poNo: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-205 rounded-xl px-3 py-2 text-[11px] focus:bg-white focus:border-indigo-400 outline-none"
-                      >
-                        <option value="PO-20261011">PO-20261011 (连衣裙大单)</option>
-                        <option value="PO-20261012">PO-20261012 (羊毛大衣单)</option>
-                        <option value="PO-20261013">PO-20261013 (内衣针织款)</option>
-                        <option value="PO-20261025">PO-20261025 (加急工艺追尾单)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 text-[10px] font-black uppercase text-left block mb-1">实到 SKU 代号</label>
-                      <select
-                        value={deliveryForm.skuCode}
-                        onChange={e => setDeliveryForm({ ...deliveryForm, skuCode: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-205 rounded-xl px-3 py-2 text-[11px] font-mono focus:bg-white focus:border-indigo-400 outline-none"
-                      >
-                        {skus.map(s => (
-                          <option key={s.sku} value={s.sku}>
-                            {s.sku} ({s.colorName} {s.sizeName.split(' ')[0]})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-slate-400 text-[10px] font-black uppercase text-left block mb-1">实收交付件数 (*)</label>
-                      <input
-                        type="number"
-                        value={deliveryForm.qty}
-                        onChange={e => setDeliveryForm({ ...deliveryForm, qty: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-205 rounded-xl px-3 py-2 text-[11px] font-mono focus:bg-white focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 text-[10px] font-black uppercase text-left block mb-1">托运承运商</label>
-                      <input
-                        type="text"
-                        value={deliveryForm.carrier}
-                        onChange={e => setDeliveryForm({ ...deliveryForm, carrier: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-205 rounded-xl px-3 py-2 text-[11px] focus:bg-white focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 text-[10px] font-black uppercase text-left block mb-1">物流运单号</label>
-                      <input
-                        type="text"
-                        value={deliveryForm.trackingNo}
-                        onChange={e => setDeliveryForm({ ...deliveryForm, trackingNo: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-205 rounded-xl px-3 py-2 text-[11px] font-mono focus:bg-white focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 space-y-1 text-[10px] text-emerald-700">
-                    <p className="font-extrabold">📌 数据实收联动说明：</p>
-                    <p className="leading-relaxed">
-                      提报此到货发货登记后，系统将模拟物理仓库的条码清点实测核对，自动累加至上方【今日入库实收】指标中进行全域穿准追踪！
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => setShowDeliveryModal(false)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold cursor-pointer transition-colors"
-                    >
-                      取消
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black cursor-pointer transition-all shadow-sm"
-                    >
-                      提报物理登记
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
     </div>
   );
 }

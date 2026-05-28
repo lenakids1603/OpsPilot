@@ -54,6 +54,22 @@ export default function SupplierWorkspacePage({
   const setActiveTab = propSetActiveTab !== undefined ? propSetActiveTab : setLocalActiveTab;
   const [searchSKU, setSearchSKU] = useState("");
 
+  // Toast status notification manager
+  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
+  const showToast = (message: string) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
+
+  const handleActionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    showToast("🎉 数据提报成功，已载入金蝶云财务/生产审核流程！");
+    setModalType(null);
+  };
+
   // Supplier Dashboard States
   const [dashboardTimeframe, setDashboardTimeframe] = useState<"thisMonth" | "thisQuarter" | "last30Days">("thisMonth");
   const [selectedCategory, setSelectedCategory] = useState<string>("全部");
@@ -536,191 +552,162 @@ export default function SupplierWorkspacePage({
       productName = "婴幼儿有机平棉公主花边爬服";
       safetyClass = "GB 31701-2015 婴幼儿用品 (A类 / 直接接触皮肤类)";
       executiveStandard = "FZ/T 73025-2019 婴幼儿针织专类服饰特别工艺";
-      fabricText = "95% 有机竹纤维棉 + 5% 杜邦莱卡高弹氨纶";
-      suggestedPrice = 199.00;
-      inspector = "QC-12";
+      fabricText = "95% 有机竹纤维棉 + 5% 杜邦莱卡高弹纤维";
     } else if (styleNo === "LN-2024-W02") {
-      productName = "儿童英伦双排扣精纺美利奴小呢大衣";
-      safetyClass = "GB 31701-2015 幼儿及儿童服饰安全规范 (B类 / 华美触肌)";
-      executiveStandard = "FZ/T 81007-2021 高品位儿童呢绒大衣制造标准";
-      fabricText = "面料: 100% 澳大利亚顶级天然美利奴羊毛 / 里料: 100% 醋酸纤维";
-      suggestedPrice = 459.00;
-      inspector = "QC-08";
+      productName = "双排扣纯羊毛高档童大衣";
+      safetyClass = "GB 31701-2015 婴幼儿用品 (A类 / 优质安全级)";
+      executiveStandard = "FZ/T 73024-2019 婴幼儿防寒专类服饰特别工艺";
+      fabricText = "100% 澳洲全羊毛 / 32支双面提花拉毛组织";
+      suggestedPrice = 388.00;
     } else if (styleNo === "LN-2501-M10") {
-      productName = "儿童双面丝光圆领精柔打底T恤衫";
-      safetyClass = "GB 31701-2015 婴幼儿用品安全标准 (A类 / 直接接触皮肤)";
-      executiveStandard = "GB/T 22849-2014 重工高档针织T恤检验指标";
-      fabricText = "100% 臻选新疆细绒精梳双丝光棉 (70支双股无缝编制)";
-      suggestedPrice = 129.00;
-      inspector = "QC-03";
+      productName = "丝光棉圆领极柔童装T恤";
+      safetyClass = "GB 31701-2015 婴幼儿用品 (A类 / 直接接触皮肤类)";
+      executiveStandard = "GB/T 33271-2016 婴幼儿针织服饰规范";
+      fabricText = "100% 长绒棉丝光工艺 / 60支双股无缝T恤";
+      suggestedPrice = 128.00;
     } else if (styleNo === "LN-2024-W03") {
-      productName = "女幼童镂空钩花美丽诺开衫毛衣";
-      safetyClass = "GB 31701-2015 婴幼儿用品安全类别 (A类 / 直接接触皮肤)";
-      executiveStandard = "FZ/T 73018-2021 纯精纺羊毛针织制造规程";
-      fabricText = "80% 顶级美利奴羊毛 + 20% 高比例桑蚕丝纤维";
-      suggestedPrice = 299.00;
-      inspector = "QC-15";
+      productName = "纯针织雕花镂空开衫";
+      safetyClass = "GB 31701-2015 婴幼儿用品 (A类 / 优质安全型)";
+      executiveStandard = "GB/T 33271-2016 婴幼儿针织服饰规范";
+      fabricText = "85% 精梳棉 + 15% 桑蚕丝混纺 / 40支镂空雕花";
+      suggestedPrice = 218.00;
     }
 
-    const randNum = (styleNo === "LN-2024-W01" ? 6970125432014 : styleNo === "LN-2024-W02" ? 6970125432021 : styleNo === "LN-2501-M10" ? 6970125432038 : 6970125432045);
-    const barCode = String(randNum + (isSkuMode ? item.sku.length : 0));
-
     return {
-      isSkuMode,
-      sku: item.sku,
-      styleNo: item.styleNo,
-      colorName: item.colorName,
-      sizeName: item.sizeName,
-      colorHex: item.colorHex,
-      cost: item.cost,
-      status: item.status,
       productName,
       safetyClass,
       executiveStandard,
       fabricText,
       suggestedPrice,
       grade,
-      inspector,
-      barCode,
+      inspector
     };
   }, [selectedSku, skus]);
 
-  // Toast feedback
-  const [toast, setToast] = useState<string | null>(null);
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleActionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (modalType === "quote") {
-      showToast("🚀 报价详情已成功提报！采购部正在进行核验。");
-    } else {
-      showToast("📁 进项财务发票及发货电子回单已被安全录入系统。");
-    }
-    setModalType(null);
-  };
-
   return (
-    <div className="bg-slate-50 border border-slate-100/60 rounded-3xl overflow-hidden shadow-lg p-3 sm:p-5 text-xs font-sans space-y-5 max-w-7xl mx-auto select-none">
-      
-      {/* Toast popup */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-5 z-[500] p-4 bg-emerald-650 text-white font-bold rounded-xl border border-emerald-500 shadow-2xl flex items-center gap-2"
+    <div className="space-y-6">
+      {/* Toast Overlay notifications */}
+      <div className="fixed top-4 right-4 z-[999] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            className="px-4 py-3 bg-slate-900 border border-slate-800 text-white text-xs font-bold font-sans rounded-xl shadow-xl flex items-center gap-2 pointer-events-auto"
           >
-            <CheckCircle2 className="w-5 h-5 text-white animate-bounce" />
-            <span>{toast}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Greeting Banner Segment */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight leading-normal">
-            您好，张经理
-          </h2>
-          <p className="text-[11px] text-slate-400 mt-0.5 font-medium font-sans">
-            今天是 <span className="text-slate-650 font-bold">2026年10月24日</span>，请关注以下待办事项以确保生产顺利进行。
-          </p>
-        </div>
-
-        {/* Quick Submit Buttons on top-right */}
-        <div className="flex items-center gap-2.5 text-xs font-semibold select-none flex-shrink-0">
-          <button
-            onClick={() => setModalType("quote")}
-            className="px-4 py-2 bg-[#002045] hover:bg-[#072449] text-white rounded-xl font-bold flex items-center gap-1.5 cursor-pointer"
-          >
-            <ArrowUpRight className="w-4 h-4" />
-            <span>提交报价</span>
-          </button>
-          <button
-            onClick={() => setModalType("bill")}
-            className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer bg-white"
-          >
-            <FileText className="w-4 h-4 text-slate-500" />
-            <span>上传账单</span>
-          </button>
-        </div>
+            <span>{t.message}</span>
+          </div>
+        ))}
       </div>
 
-      {/* Top dashboard stats cards row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 select-none">
-        
-        {/* Metric 1 */}
-        <div className="bg-indigo-50/30 border border-indigo-100 rounded-2xl p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-indigo-850 font-black text-[11px] block">待填写报价</span>
-            <span className="text-[10px] text-slate-400 font-sans block">包含新款打样报价及审单确认</span>
-          </div>
-          <span className="text-3xl font-black text-indigo-700 font-mono tracking-tight leading-none px-2.5">3</span>
-        </div>
+      {/* Greeting Banner Segment & Top dashboard stats cards row shown only on sub-tab views */}
+      {activeTab !== "工作台" && (
+        <>
+          {/* Greeting Banner Segment */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+            <div>
+              <h2 className="text-xl font-black text-slate-800 tracking-tight leading-normal">
+                您好，张经理
+              </h2>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium font-sans">
+                今天是 <span className="text-slate-650 font-bold">2026年10月24日</span>，请关注以下待办事项以确保生产顺利进行。
+              </p>
+            </div>
 
-        {/* Metric 2 */}
-        <div className="bg-amber-50/20 border border-amber-100 rounded-2xl p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-amber-800/80 font-black text-[11px] block">待更新交期</span>
-            <span className="text-[10px] text-slate-400 font-sans block">生产中订单的进度及入库预测</span>
+            {/* Quick Submit Buttons on top-right */}
+            <div className="flex items-center gap-2.5 text-xs font-semibold select-none flex-shrink-0">
+              <button
+                onClick={() => setModalType("quote")}
+                className="px-4 py-2 bg-[#002045] hover:bg-[#072449] text-white rounded-xl font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>提交报价</span>
+              </button>
+              <button
+                onClick={() => setModalType("bill")}
+                className="px-4 py-2 border border-slate-205 hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer bg-white"
+              >
+                <span>上传账单</span>
+              </button>
+            </div>
           </div>
-          <span className="text-3xl font-black text-orange-650 font-mono tracking-tight leading-none px-2.5">2</span>
-        </div>
 
-        {/* Metric 3 */}
-        <div 
-          onClick={() => {
-            setActiveTab("发票提交");
-            showToast("🧾 已快速跳转至发票提交与账单明细面板");
-          }}
-          className="bg-slate-50 border border-slate-150 hover:bg-slate-100/60 hover:border-slate-350 cursor-pointer rounded-2xl p-5 shadow-xs flex items-center justify-between transition-all"
-        >
-          <div className="space-y-1">
-            <span className="text-slate-600 font-black text-[11px] block font-sans">待上传账单</span>
-            <span className="text-[10px] text-slate-450 block">上月已入库货款的电子发票</span>
+          {/* Top dashboard stats cards row */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 select-none">
+            {/* Metric 1 */}
+            <div className="bg-indigo-50/30 border border-indigo-100 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-indigo-850 font-black text-[11px] block">待填写报价</span>
+                <span className="text-[10px] text-slate-400 font-sans block">包含新款打样报价及审单确认</span>
+              </div>
+              <span className="text-3xl font-black text-indigo-700 font-mono tracking-tight leading-none px-2.5">3</span>
+            </div>
+
+            {/* Metric 2 */}
+            <div className="bg-amber-50/20 border border-amber-100 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-amber-800/80 font-black text-[11px] block">待更新交期</span>
+                <span className="text-[10px] text-slate-400 font-sans block">生产中订单的进度及入库预测</span>
+              </div>
+              <span className="text-3xl font-black text-orange-650 font-mono tracking-tight leading-none px-2.5">2</span>
+            </div>
+
+            {/* Metric 3 */}
+            <div 
+              onClick={() => {
+                setActiveTab("对账结算");
+                showToast("🧾 已快速跳转至发票提交与账单明细面板");
+              }}
+              className="bg-slate-50 border border-slate-150 hover:bg-slate-101/60 hover:border-slate-355 cursor-pointer rounded-2xl p-5 shadow-xs flex items-center justify-between transition-all"
+            >
+              <div className="space-y-1">
+                <span className="text-slate-650 font-black text-[11px] block font-sans">待上传账单</span>
+                <span className="text-[10px] text-slate-455 block">上月已入库货款的电子发票</span>
+              </div>
+              <span className="text-3xl font-black text-indigo-655 font-mono tracking-tight leading-none px-2.5">1</span>
+            </div>
+
+            {/* Metric 4 */}
+            <div className="bg-rose-50/30 border border-rose-100 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-rose-700/80 font-black text-[11px] block font-sans">质量问题</span>
+                <span className="text-[10px] text-slate-400 block font-medium">目前暂待回复的质检异常</span>
+              </div>
+              <span className="text-3xl font-black text-slate-400 font-mono tracking-tight leading-none px-2.5">0</span>
+            </div>
+
+            {/* Metric 5 */}
+            <div 
+              onClick={() => {
+                setActiveTab("客户投诉");
+                showToast("⚠️ 已快速跳转至客户投诉档案清单");
+              }}
+              className="bg-slate-50 border border-slate-150 hover:bg-slate-350 cursor-pointer rounded-2xl p-5 shadow-xs flex items-center justify-between transition-all"
+            >
+              <div className="space-y-1">
+                <span className="font-sans text-[11px] font-black text-slate-650">
+                  本周新增客诉
+                </span>
+                <span className="text-[10px] text-slate-400 block font-medium">终端专柜及买手的客诉监控</span>
+              </div>
+              <span className="text-4xl md:text-5xl font-black font-mono tracking-tight leading-none px-2.5 text-slate-400">
+                {weeklyComplaintsCount}
+              </span>
+            </div>
           </div>
-          <span className="text-3xl font-black text-indigo-650 font-mono tracking-tight leading-none px-2.5">1</span>
-        </div>
+        </>
+      )}
 
-        {/* Metric 4 */}
-        <div className="bg-rose-50/30 border border-rose-100 rounded-2xl p-5 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-rose-700/80 font-black text-[11px] block font-sans">质量问题</span>
-            <span className="text-[10px] text-slate-400 block">目前暂待回复的质检异常</span>
-          </div>
-          <span className="text-3xl font-black text-slate-400 font-mono tracking-tight leading-none px-2.5">0</span>
-        </div>
+      {/* Grid: Split Table vs Sidebar details */}
+      {activeTab === "工作台" && (
+        <SupplierDashboardView
+          skus={skus}
+          setActiveTab={setActiveTab}
+          showToast={showToast}
+          setSelectedSku={setSelectedSku}
+          setModalType={setModalType}
+          weeklyComplaintsCount={weeklyComplaintsCount}
+        />
+      )}
 
-        {/* Metric 5 */}
-        <div 
-          onClick={() => {
-            setActiveTab("客户投诉");
-            showToast("⚠️ 已快速跳转至客户投诉档案清单");
-          }}
-          className={`border rounded-2xl p-5 shadow-xs flex items-center justify-between cursor-pointer transition-all ${
-            weeklyComplaintsCount > 0 
-              ? "bg-rose-50 border-rose-300 hover:border-rose-450 hover:bg-rose-100/50 hover:shadow-xs" 
-              : "bg-slate-50 border-slate-150 hover:border-slate-350"
-          }`}
-        >
-          <div className="space-y-1">
-            <span className={`font-black text-[11px] block font-sans ${weeklyComplaintsCount > 0 ? "text-rose-700 font-extrabold" : "text-slate-650"}`}>
-              本周新增客诉
-            </span>
-            <span className="text-[10px] text-slate-400 block font-medium">终端专柜及买手的客诉监控</span>
-          </div>
-          <span className={`text-4xl md:text-5xl font-black font-mono tracking-tight leading-none px-2.5 ${
-            weeklyComplaintsCount > 0 ? "text-rose-600 animate-pulse" : "text-slate-400"
-          }`}>
-            {weeklyComplaintsCount}
-          </span>
-        </div>
-      </div>
-
+      {/* Grid: Split Table vs Sidebar details */}
       {/* Grid: Split Table vs Sidebar details */}
       {activeTab === "工作台" && (
         <SupplierDashboardView
