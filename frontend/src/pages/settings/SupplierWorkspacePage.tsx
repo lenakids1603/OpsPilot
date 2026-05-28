@@ -53,6 +53,79 @@ export default function SupplierWorkspacePage({
   const activeTab = propActiveTab !== undefined ? propActiveTab : localActiveTab;
   const setActiveTab = propSetActiveTab !== undefined ? propSetActiveTab : setLocalActiveTab;
   const [searchSKU, setSearchSKU] = useState("");
+  const [orderFilterSku, setOrderFilterSku] = useState<string | null>(null);
+
+  const mockOrdersList = useMemo(() => [
+    {
+      poNo: "PO-20261011",
+      sku: "LN-2026-W01-PK-66",
+      name: "女童泡泡袖亮丝加绒连衣裙",
+      color: "雅致粉 / 纯棉爬服",
+      qty: 15400,
+      price: 61.50,
+      deliveryDate: "2026-05-25",
+      status: "缝纫加工中 (65%)",
+      statusStyle: "bg-sky-100 text-sky-700 border-sky-300",
+    },
+    {
+      poNo: "PO-20261012",
+      sku: "LN-2026-W01-YL-80",
+      name: "女童法式轻复古刺绣连衣裙",
+      color: "柠檬黄 / 梭织纱裙",
+      qty: 180,
+      price: 65.00,
+      deliveryDate: "2026-05-29",
+      status: "待出货即将交付 (90%)",
+      statusStyle: "bg-amber-100 text-amber-700 border-amber-300",
+    },
+    {
+      poNo: "PO-20261015",
+      sku: "LN-2024-W02-RD-80",
+      name: "复古呢子外套",
+      color: "复古红 / 精纺双面呢",
+      qty: 550,
+      price: 72.50,
+      deliveryDate: "2026-05-30",
+      status: "胚布印染整理中 (20%)",
+      statusStyle: "bg-rose-100 text-rose-700 border-rose-300",
+    },
+    {
+      poNo: "PO-25011009",
+      sku: "LN-2026-K12-BK-90",
+      name: "特轻羽绒外套",
+      color: "黑色 / 防风科技面料",
+      qty: 600,
+      price: 110.00,
+      deliveryDate: "2026-05-31",
+      status: "工艺样确认完毕 (10%)",
+      statusStyle: "bg-indigo-100 text-indigo-700 border-indigo-300",
+    },
+    {
+      poNo: "PO-20260905",
+      sku: "LN-2501-M10-GY-100",
+      name: "精柔双向高弹内衣裤",
+      color: "花灰 / 软糯棉氨",
+      qty: 3000,
+      price: 45.00,
+      deliveryDate: "2026-05-28",
+      status: "已过账清点完结 (100%)",
+      statusStyle: "bg-emerald-100 text-emerald-700 border-emerald-300",
+    }
+  ], []);
+
+  const filteredOrders = useMemo(() => {
+    if (!orderFilterSku) return mockOrdersList;
+    const filterUpper = orderFilterSku.toUpperCase();
+    if (filterUpper === "OVERLAP") {
+      return mockOrdersList.filter(o => ["LN-2026-K12-BK-90", "LN-2501-M10-GY-100", "LN-2026-W01-YL-80", "LN-2024-W02-RD-80"].some(code => o.sku.toUpperCase().includes(code)));
+    }
+    // Match order's sku, poNo, color or category
+    return mockOrdersList.filter(o => 
+      o.sku.toUpperCase().includes(filterUpper) || 
+      o.poNo.toUpperCase().includes(filterUpper) ||
+      o.name.toUpperCase().includes(filterUpper)
+    );
+  }, [mockOrdersList, orderFilterSku]);
 
   // Toast status notification manager
   const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
@@ -704,19 +777,11 @@ export default function SupplierWorkspacePage({
           setSelectedSku={setSelectedSku}
           setModalType={setModalType}
           weeklyComplaintsCount={weeklyComplaintsCount}
-        />
-      )}
-
-      {/* Grid: Split Table vs Sidebar details */}
-      {/* Grid: Split Table vs Sidebar details */}
-      {activeTab === "工作台" && (
-        <SupplierDashboardView
-          skus={skus}
-          setActiveTab={setActiveTab}
-          showToast={showToast}
-          setSelectedSku={setSelectedSku}
-          setModalType={setModalType}
-          weeklyComplaintsCount={weeklyComplaintsCount}
+          onSelectTimelineItem={(skuCode) => {
+            setOrderFilterSku(skuCode);
+            setActiveTab("我的订单");
+            showToast(`已为您筛选：对应款/SKU ${skuCode === "OVERLAP" ? "重叠款式" : skuCode} 的采购单明细`);
+          }}
         />
       )}
 
@@ -1094,10 +1159,38 @@ export default function SupplierWorkspacePage({
               <Truck className="w-4.5 h-4.5 text-indigo-600" />
               正在执行的采购生产单
             </h4>
-            <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-black uppercase">
-              生产中: 2 笔 | 待发货: 1 笔
-            </span>
+            
+            <div className="flex items-center gap-3">
+              {orderFilterSku && (
+                <button
+                  onClick={() => setOrderFilterSku(null)}
+                  className="px-3 py-1 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-black transition-all cursor-pointer"
+                >
+                  清除时间轴过滤 ✕
+                </button>
+              )}
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-black uppercase">
+                当前列表: {filteredOrders.length} 笔数据
+              </span>
+            </div>
           </div>
+
+          {orderFilterSku && (
+            <div className="flex items-center justify-between bg-emerald-50/60 border border-emerald-500/10 rounded-xl px-4 py-3 text-[11px] text-emerald-800 animate-pulse">
+              <div className="flex items-center gap-2 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>
+                  当前已被【货期时间轴】过滤筛选，仅展示与款/SKU <strong>“{orderFilterSku === "OVERLAP" ? "重叠特殊款" : orderFilterSku}”</strong> 相关的排产发运明细
+                </span>
+              </div>
+              <button 
+                onClick={() => setOrderFilterSku(null)} 
+                className="font-bold text-emerald-600 hover:text-emerald-800 hover:underline cursor-pointer"
+              >
+                查看全部订单
+              </button>
+            </div>
+          )}
           
           <div className="overflow-x-auto text-[11px] font-medium leading-normal">
             <table className="w-full text-left border-collapse text-slate-600">
@@ -1112,51 +1205,31 @@ export default function SupplierWorkspacePage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 pl-6 font-bold text-slate-800 font-mono">PO-20261011</td>
-                  <td className="p-4">
-                    <span className="font-bold text-slate-700 block">LN-2024-W01</span>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">雅致粉 / 纯棉爬服</span>
-                  </td>
-                  <td className="p-4 text-center font-bold font-mono text-slate-900">1,500</td>
-                  <td className="p-4 text-center font-bold font-mono">58.00</td>
-                  <td className="p-4 text-center font-bold font-mono text-indigo-600">2026-11-15</td>
-                  <td className="p-4 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-sky-100 text-sky-700 border border-sky-200">
-                      缝纫加工中 (65%)
-                    </span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 pl-6 font-bold text-slate-800 font-mono">PO-20261018</td>
-                  <td className="p-4">
-                    <span className="font-bold text-slate-700 block">LN-2024-W02</span>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">深邃蓝 / 羊毛外套</span>
-                  </td>
-                  <td className="p-4 text-center font-bold font-mono text-slate-900">800</td>
-                  <td className="p-4 text-center font-bold font-mono">72.50</td>
-                  <td className="p-4 text-center font-bold font-mono text-indigo-600">2026-11-20</td>
-                  <td className="p-4 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-5 text-amber-700 border border-amber-200">
-                      面料预缩完成 (20%)
-                    </span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 pl-6 font-bold text-slate-800 font-mono">PO-20260905</td>
-                  <td className="p-4">
-                    <span className="font-bold text-slate-700 block">LN-2501-M10</span>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">珍珠白 / 丝光棉T恤</span>
-                  </td>
-                  <td className="p-4 text-center font-bold font-mono text-slate-900">3,000</td>
-                  <td className="p-4 text-center font-bold font-mono">45.00</td>
-                  <td className="p-4 text-center font-bold font-mono text-emerald-600">2026-10-20</td>
-                  <td className="p-4 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-slate-100 text-slate-500 border border-slate-200">
-                      已验收入库 (100%)
-                    </span>
-                  </td>
-                </tr>
+                {filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-[11.5px] font-bold text-slate-400 bg-slate-50/30">
+                      ⚡ 暂无符合该筛选条件的排产订单详细清单
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <tr key={order.poNo} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 pl-6 font-bold text-slate-800 font-mono">{order.poNo}</td>
+                      <td className="p-4">
+                        <span className="font-bold text-slate-700 block">{order.sku}</span>
+                        <span className="text-[9.5px] text-slate-400 block mt-0.5">{order.name} ({order.color})</span>
+                      </td>
+                      <td className="p-4 text-center font-bold font-mono text-slate-900">{order.qty.toLocaleString()}</td>
+                      <td className="p-4 text-center font-bold font-mono">{order.price.toFixed(2)}</td>
+                      <td className="p-4 text-center font-bold font-mono text-indigo-600">{order.deliveryDate}</td>
+                      <td className="p-4 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${order.statusStyle}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

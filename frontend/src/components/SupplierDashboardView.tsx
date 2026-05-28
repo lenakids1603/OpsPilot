@@ -30,6 +30,7 @@ interface SupplierDashboardViewProps {
   setSelectedSku?: (sku: string | null) => void;
   setModalType?: (type: "quote" | "bill" | "detail" | null) => void;
   weeklyComplaintsCount?: number;
+  onSelectTimelineItem?: (skuCode: string) => void;
 }
 
 // Structuring details for each SKU for the slide-over drawer
@@ -59,7 +60,8 @@ export default function SupplierDashboardView({
   showToast,
   setSelectedSku,
   setModalType,
-  weeklyComplaintsCount = 0
+  weeklyComplaintsCount = 0,
+  onSelectTimelineItem
 }: SupplierDashboardViewProps) {
   // 1. Timeframe Select state (Defaults to "This Month")
   const [selectedTimeframe, setSelectedTimeframe] = useState<"今日" | "本月" | "近30天" | "今年" | "自定义">("本月");
@@ -110,6 +112,9 @@ export default function SupplierDashboardView({
         qualityReturnQty: 4,
         qualityDeductionAmount: 120,
         timelineItems: [
+          { date: "5/22" },
+          { date: "5/23" },
+          { date: "5/24" },
           { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已完成", colorType: "green", image: "dress_pink" },
           { date: "5/26" },
           { date: "5/27", isToday: true },
@@ -120,7 +125,13 @@ export default function SupplierDashboardView({
           { date: "6/1" },
           { date: "6/2" },
           { date: "6/3" },
-          { date: "6/4" }
+          { date: "6/4" },
+          { date: "6/5" },
+          { date: "6/6" },
+          { date: "6/7" },
+          { date: "6/8" },
+          { date: "6/9" },
+          { date: "6/10" }
         ],
         pendingItems: [
           {
@@ -173,6 +184,9 @@ export default function SupplierDashboardView({
         qualityReturnQty: 48,
         qualityDeductionAmount: 1680,
         timelineItems: [
+          { date: "5/22" },
+          { date: "5/23" },
+          { date: "5/24" },
           { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
           { date: "5/26" },
           { date: "5/27", isToday: true },
@@ -183,7 +197,13 @@ export default function SupplierDashboardView({
           { date: "6/1" },
           { date: "6/2" },
           { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
-          { date: "6/4" }
+          { date: "6/4" },
+          { date: "6/5" },
+          { date: "6/6" },
+          { date: "6/7" },
+          { date: "6/8", sku: "LN-2026-W03-GY-10", name: "精柔舒棉针织束脚运动裤", qty: 1500, status: "即将交付", colorType: "green", image: "pants_grey" },
+          { date: "6/9" },
+          { date: "6/10" }
         ],
         pendingItems: [
           {
@@ -274,6 +294,9 @@ export default function SupplierDashboardView({
         qualityReturnQty: 52,
         qualityDeductionAmount: 1920,
         timelineItems: [
+          { date: "5/22" },
+          { date: "5/23" },
+          { date: "5/24" },
           { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
           { date: "5/26" },
           { date: "5/27", isToday: true },
@@ -284,7 +307,13 @@ export default function SupplierDashboardView({
           { date: "6/1" },
           { date: "6/2" },
           { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
-          { date: "6/4" }
+          { date: "6/4" },
+          { date: "6/5" },
+          { date: "6/6" },
+          { date: "6/7" },
+          { date: "6/8", sku: "LN-2026-W03-GY-10", name: "精柔舒棉针织束脚运动裤", qty: 1500, status: "即将交付", colorType: "green", image: "pants_grey" },
+          { date: "6/9" },
+          { date: "6/10" }
         ],
         pendingItems: [
           {
@@ -356,6 +385,9 @@ export default function SupplierDashboardView({
         qualityReturnQty: 210,
         qualityDeductionAmount: 8400,
         timelineItems: [
+          { date: "5/22" },
+          { date: "5/23" },
+          { date: "5/24" },
           { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
           { date: "5/26" },
           { date: "5/27", isToday: true },
@@ -366,7 +398,13 @@ export default function SupplierDashboardView({
           { date: "6/1" },
           { date: "6/2" },
           { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
-          { date: "6/4" }
+          { date: "6/4" },
+          { date: "6/5" },
+          { date: "6/6" },
+          { date: "6/7" },
+          { date: "6/8", sku: "LN-2026-W03-GY-10", name: "精柔舒棉针织束脚运动裤", qty: 1500, status: "即将交付", colorType: "green", image: "pants_grey" },
+          { date: "6/9" },
+          { date: "6/10" }
         ],
         pendingItems: [
           {
@@ -438,6 +476,9 @@ export default function SupplierDashboardView({
         qualityReturnQty: 24,
         qualityDeductionAmount: 840,
         timelineItems: [
+          { date: "5/22" },
+          { date: "5/23" },
+          { date: "5/24" },
           { date: "5/25", sku: "LN-2026-W01-PK-66", name: "女童泡泡袖亮丝加绒连衣裙", qty: 300, status: "已超时", colorType: "red", image: "dress_pink" },
           { date: "5/26" },
           { date: "5/27", isToday: true },
@@ -448,7 +489,13 @@ export default function SupplierDashboardView({
           { date: "6/1" },
           { date: "6/2" },
           { date: "6/3", sku: "LN-2026-W02-BL-90", name: "童装连帽防风保暖外套", qty: 500, status: "即将交付", colorType: "green", image: "jacket_blue" },
-          { date: "6/4" }
+          { date: "6/4" },
+          { date: "6/5" },
+          { date: "6/6" },
+          { date: "6/7" },
+          { date: "6/8", sku: "LN-2026-W03-GY-10", name: "精柔舒棉针织束脚运动裤", qty: 1500, status: "即将交付", colorType: "green", image: "pants_grey" },
+          { date: "6/9" },
+          { date: "6/10" }
         ],
         pendingItems: [
           {
@@ -656,7 +703,7 @@ export default function SupplierDashboardView({
           <div className="relative">
             <div className="flex items-center space-x-2 text-emerald-750 font-extrabold text-[12px] uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>PURCHASE OVERVIEW / 采购概况</span>
+              <span>采购概况</span>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-4 border-b border-emerald-500/5 pb-5">
@@ -666,11 +713,11 @@ export default function SupplierDashboardView({
                   <span className="text-2xl md:text-3.5xl font-black text-[#012b24] font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
                     {dashboardData.purchaseTotalQty.toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-slate-450 font-bold ml-1">pcs</span>
+                  <span className="text-[10px] text-slate-450 font-bold ml-1">件</span>
                 </div>
               </div>
               <div>
-                <span className="text-[11px] text-slate-400 font-bold block">采购金额</span>
+                <span className="text-[11px] text-slate-400 font-semibold block">采购金额</span>
                 <div className="flex items-baseline mt-1.5">
                   <span className="text-2xl md:text-3.5xl font-black text-emerald-700 font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
                     ¥{dashboardData.purchaseTotalAmount.toLocaleString()}
@@ -699,7 +746,7 @@ export default function SupplierDashboardView({
           <div className="relative">
             <div className="flex items-center space-x-2 text-blue-750 font-extrabold text-[12px] uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              <span>STORAGE OVERVIEW / 入库概况</span>
+              <span>入库概况</span>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-4 border-b border-blue-500/5 pb-5">
@@ -709,11 +756,11 @@ export default function SupplierDashboardView({
                   <span className="text-2xl md:text-3.5xl font-black text-[#012b24] font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
                     {dashboardData.inboundTotalQty.toLocaleString()}
                   </span>
-                  <span className="text-[10px] text-slate-455 font-bold ml-1">pcs</span>
+                  <span className="text-[10px] text-slate-455 font-bold ml-1">件</span>
                 </div>
               </div>
               <div>
-                <span className="text-[11px] text-slate-400 font-bold block">入库金额</span>
+                <span className="text-[11px] text-slate-400 font-semibold block">入库金额</span>
                 <div className="flex items-baseline mt-1.5">
                   <span className="text-2xl md:text-3.5xl font-black text-blue-600 font-mono tracking-tight group-hover:scale-101 transition-transform origin-left">
                     ¥{dashboardData.inboundTotalAmount.toLocaleString()}
@@ -744,18 +791,18 @@ export default function SupplierDashboardView({
                 <Clock className="w-5 h-5 animate-[spin_20s_linear_infinite]" />
               </div>
               <div className="leading-tight">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">DELIVERY OVERDUE / 货期超时</span>
+                <span className="text-[10px] font-bold text-slate-400 block tracking-wider">货期超时</span>
                 <div className="flex items-baseline mt-1 gap-1">
                   <span className="text-xl font-extrabold text-amber-700 font-mono leading-none">
                     {dashboardData.overdueQty.toLocaleString()}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-bold font-sans">Items</span>
+                  <span className="text-[9px] text-slate-400 font-bold">件</span>
                 </div>
               </div>
             </div>
             
             <div className="text-right border-l border-amber-500/10 pl-4.5 min-w-[90px]">
-              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Penalty / 扣款</span>
+              <span className="text-[9px] font-bold text-slate-400 block tracking-wider">延期扣款</span>
               <span className="text-xs font-bold text-rose-600 font-mono leading-none block mt-1.5">
                 ¥{dashboardData.overdueDeductionAmount.toLocaleString()}
               </span>
@@ -772,18 +819,18 @@ export default function SupplierDashboardView({
                 <ShieldAlert className="w-5 h-5" />
               </div>
               <div className="leading-tight">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block tracking-wider">QUALITY ISSUES / 质量瑕疵</span>
+                <span className="text-[10px] font-bold text-slate-400 block tracking-wider">质量退货</span>
                 <div className="flex items-baseline mt-1 gap-1">
                   <span className="text-xl font-extrabold text-rose-600 font-mono leading-none">
                     {dashboardData.qualityReturnQty.toLocaleString()}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-bold font-sans">Returns</span>
+                  <span className="text-[9px] text-slate-400 font-bold">件</span>
                 </div>
               </div>
             </div>
             
             <div className="text-right border-l border-rose-500/10 pl-4.5 min-w-[90px]">
-              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Deduction / 惩罚</span>
+              <span className="text-[9px] font-bold text-slate-400 block tracking-wider">质量扣款</span>
               <span className="text-xs font-bold text-rose-600 font-mono leading-none block mt-1.5">
                 ¥{dashboardData.qualityDeductionAmount.toLocaleString()}
               </span>
@@ -800,42 +847,42 @@ export default function SupplierDashboardView({
         <div className="flex items-center justify-between mb-8 select-none flex-wrap gap-4">
           <div className="flex items-center gap-2">
             <span className="w-3 h-5 bg-emerald-600 rounded-xs inline-block" />
-            <h3 className="text-15px font-bold text-[#012b24] tracking-tight">Delivery Timeline / 货期时间轴</h3>
+            <h3 className="text-15px font-bold text-[#012b24] tracking-tight">货期时间轴</h3>
           </div>
 
           {/* Legend indicators */}
           <div className="flex items-center gap-4 text-[11px] font-black tracking-normal">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block border border-rose-600" />
-              <span className="text-slate-500">Overdue / 已超时</span>
+              <span className="text-slate-500">已超时</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-450 inline-block border border-amber-600" />
-              <span className="text-slate-500">Risk / 生产异常</span>
+              <span className="text-slate-500">生产异常</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block border border-emerald-600" />
-              <span className="text-slate-500">Healthy / 即将交付</span>
+              <span className="text-slate-500">即将交付</span>
             </span>
           </div>
         </div>
 
         {/* Overdue/Upcoming Outer Indicator Labels */}
-        <div className="hidden lg:flex items-center justify-between absolute left-5 right-5 top-[154px] pointer-events-none select-none">
+        <div className="hidden lg:flex items-center justify-between absolute left-5 right-5 top-[150px] -translate-y-1/2 pointer-events-none select-none z-20">
           <div className="flex items-center gap-1 bg-rose-50 border border-rose-200 px-2 py-0.8 rounded-md text-[9px] font-bold text-rose-600 animate-pulse">
-            <AlertCircle className="w-3 h-3 text-rose-500" /> OVERDUE
+            <AlertCircle className="w-3 h-3 text-rose-500" /> 已超时
           </div>
           <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.8 rounded-md text-[9px] font-bold text-emerald-600">
-            <CheckCircle className="w-3 h-3 text-emerald-500" /> UPCOMING
+            <CheckCircle className="w-3 h-3 text-emerald-500" /> 即将交付
           </div>
         </div>
 
         {/* Scrollable Timeline Grid Base Line */}
         <div className="overflow-x-auto pb-4 scrollbar-thin select-none">
-          <div className="min-w-[950px] relative h-[210px] flex items-center justify-between px-8">
+          <div className="min-w-[1100px] xl:min-w-full relative h-[250px] flex items-center justify-between px-8">
             
             {/* Center horizontal line */}
-            <div className="absolute left-6 right-6 top-[130px] h-[3px] bg-slate-200" />
+            <div className="absolute left-6 right-6 top-[150px] h-[3px] bg-slate-200" />
 
             {/* Render each node slot in dashboardData */}
             {dashboardData.timelineItems.map((node, index) => {
@@ -857,7 +904,7 @@ export default function SupplierDashboardView({
               return (
                 <div 
                   key={nodeKey}
-                  className="flex flex-col items-center relative flex-1"
+                  className="flex flex-col items-center relative flex-1 h-full"
                   style={{ zIndex: isHovered ? 50 : 10 }}
                 >
                   
@@ -867,57 +914,37 @@ export default function SupplierDashboardView({
                       onMouseEnter={() => setHoveredTimelineNode(nodeKey)}
                       onMouseLeave={() => setHoveredTimelineNode(null)}
                       onClick={() => {
-                        // Find matching pending detail item or fallback mock
-                        const found = dashboardData.pendingItems.find(p => p.sku === node.sku) || {
-                          sku: node.sku,
-                          name: node.name || "示例服装衬衫",
-                          imageUrl: node.image || "dress_pink",
-                          category: "女童服饰",
-                          purchaseQty: node.qty || 300,
-                          storedQty: Math.floor((node.qty || 300) * 0.7),
-                          remainingQty: Math.floor((node.qty || 300) * 0.3),
-                          unitPrice: 65,
-                          amount: (node.qty || 300) * 65,
-                          dueDate: `2026-${node.date.replace("/", "-")}`,
-                          status: node.colorType === "red" ? "OVERDUE" : "PRODUCING",
-                          overdueDays: node.colorType === "red" ? 3 : 0,
-                          overdueDeduction: node.colorType === "red" ? 1200 : 0,
-                          qualityReturns: 0,
-                          qualityDeduction: 0,
-                          lastInboundTime: "2026-05-24",
-                          supplierName: "杭州织锦服饰有限公司"
-                        } as DetailedSkuInfo;
-                        setActiveDrawerItem(found);
+                        if (onSelectTimelineItem) {
+                          onSelectTimelineItem(node.sku);
+                        } else {
+                          // Find matching pending detail item or fallback mock
+                          const found = dashboardData.pendingItems.find(p => p.sku === node.sku) || {
+                            sku: node.sku,
+                            name: node.name || "示例服装衬衫",
+                            imageUrl: node.image || "dress_pink",
+                            category: "女童服饰",
+                            purchaseQty: node.qty || 300,
+                            storedQty: Math.floor((node.qty || 300) * 0.7),
+                            remainingQty: Math.floor((node.qty || 300) * 0.3),
+                            unitPrice: 65,
+                            amount: (node.qty || 300) * 65,
+                            dueDate: `2026-${node.date.replace("/", "-")}`,
+                            status: node.colorType === "red" ? "OVERDUE" : "PRODUCING",
+                            overdueDays: node.colorType === "red" ? 3 : 0,
+                            overdueDeduction: node.colorType === "red" ? 1200 : 0,
+                            qualityReturns: 0,
+                            qualityDeduction: 0,
+                            lastInboundTime: "2026-05-24",
+                            supplierName: "杭州织锦服饰有限公司"
+                          } as DetailedSkuInfo;
+                          setActiveDrawerItem(found);
+                        }
                       }}
-                      className="absolute bottom-[92px] w-[90px] xl:w-[100px] flex flex-col items-center cursor-pointer group"
+                      className="absolute bottom-[115px] w-[90px] xl:w-[100px] flex flex-col items-center cursor-pointer group"
                     >
-                      {/* Interactive hover detail overlay popover */}
-                      <AnimatePresence>
-                        {isHovered && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            transition={{ duration: 0.12 }}
-                            className="absolute bottom-[104%] w-[210px] bg-[#0c1e34] text-white rounded-xl p-3 shadow-2xl z-50 text-[10.5px] leading-relaxed border border-white/10"
-                          >
-                            <span className={`text-[8px] font-extrabold uppercase px-1.8 py-0.5 rounded-sm mb-1.5 inline-block ${tagColor}`}>
-                              {node.status}
-                            </span>
-                            <p className="font-extrabold truncate text-white">{node.sku}</p>
-                            <p className="text-[9.5px] text-slate-300 font-medium truncate mt-0.5">{node.name}</p>
-                            <div className="grid grid-cols-2 gap-1.5 mt-2 pt-1.5 border-t border-white/5 font-mono text-[9px] text-slate-400">
-                              <div>已入库: <span className="text-emerald-400">{(node.qty || 0) * 2}件</span></div>
-                              <div>采购件: <span className="text-white">{node.qty}件</span></div>
-                            </div>
-                            <span className="text-[8px] font-black text-amber-300 block mt-1.5">💡 点击单元格可展开高阶档案面板</span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {/* Header Badge tag (e.g. OVERDUE, RISK, HEALTHY) */}
-                      <span className={`text-[8.5px] font-bold uppercase py-0.5 px-2 rounded-md tracking-wider shadow-2xs mb-1.5 select-none ${tagColor} transition-all group-hover:scale-105`}>
-                        {node.colorType === "red" ? "OVERDUE" : node.colorType === "yellow" ? "RISK" : "HEALTHY"}
+                      {/* Header Badge tag (e.g. 已超时, 有风险, 即将交付) */}
+                      <span className={`text-[8.5px] font-bold py-0.5 px-2 rounded-md tracking-wider shadow-2xs mb-1.5 select-none ${tagColor} transition-all group-hover:scale-105`}>
+                        {node.colorType === "red" ? "已超时" : node.colorType === "yellow" ? "有风险" : "即将交付"}
                       </span>
 
                       {/* Apparel Card with thumbnail */}
@@ -932,32 +959,17 @@ export default function SupplierDashboardView({
                     <div 
                       onMouseEnter={() => setHoveredTimelineNode(nodeKey)}
                       onMouseLeave={() => setHoveredTimelineNode(null)}
-                      onClick={() => showToast(`📦 2026-05-31 该日期下共有 ${node.itemCount} 款交付商品：包含抗菌童袜、加绒长内衣等，可查阅下方表格进行对数。`)}
-                      className="absolute bottom-[92px] w-[90px] flex flex-col items-center cursor-pointer group"
+                      onClick={() => {
+                        if (onSelectTimelineItem) {
+                          onSelectTimelineItem("OVERLAP");
+                        } else {
+                          showToast(`📦 2026-05-31 该日期下共有 ${node.itemCount} 款交付商品：包含抗菌童袜、加绒长内衣等，可查阅下方表格进行对数。`);
+                        }
+                      }}
+                      className="absolute bottom-[115px] w-[90px] flex flex-col items-center cursor-pointer group"
                     >
-                      <AnimatePresence>
-                        {isHovered && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            className="absolute bottom-[84%] w-[200px] bg-[#0c1e34] text-white rounded-xl p-3.5 shadow-2xl z-50 text-[10px] leading-relaxed border border-white/5"
-                          >
-                            <span className="text-[8.5px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-sm block w-fit mb-2">
-                              合并重叠款数 ({node.itemCount} 款)
-                            </span>
-                            <div className="space-y-1 text-slate-300 font-medium">
-                              <p>• LN-2026-M10-WT-110 (White 童袜)</p>
-                              <p>• LN-2026-K12-BK-90 (Black 外套)</p>
-                              <p>• LN-2026-K12-RD-85 (Red 打底)</p>
-                            </div>
-                            <span className="text-[8px] text-slate-400 block mt-2 pt-1 border-t border-white/5">合并排单交货，避免库存阻滞</span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
                       <span className="text-[8.5px] font-black py-0.5 px-2 rounded-md bg-slate-500 text-white tracking-wider mb-2">
-                        MERGED
+                        合并交货
                       </span>
 
                       {/* Stacked cards effect */}
@@ -973,24 +985,54 @@ export default function SupplierDashboardView({
 
                   {/* Today Indicator Capsule (Direct pointer) */}
                   {node.isToday ? (
-                    <div className="absolute bottom-[92px] w-[110px] flex flex-col items-center">
+                    <div className="absolute bottom-[115px] w-[110px] flex flex-col items-center">
                       <div className="bg-[#0b1c30] text-white text-[9.5px] font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                        <span>Today (5/27)</span>
+                        <span>今日 (5/27)</span>
                       </div>
                       {/* Downward connecting vertical arrow */}
-                      <div className="w-[1.5px] h-9 bg-[#0b1c30] mt-1 relative flex justify-center">
+                      <div className="w-[1.5px] h-[22px] bg-[#0b1c30] mt-1 relative flex justify-center">
                         <div className="absolute bottom-0 w-1.5 h-1.5 bg-[#0b1c30] rounded-full" />
                       </div>
                     </div>
                   ) : null}
 
                   {/* Timeline node dot mapping on center line */}
-                  <div className="h-[28px] flex items-center justify-center relative translate-y-[13px]">
+                  <div className="absolute top-[150px] -translate-y-1/2 h-[28px] w-[28px] flex items-center justify-center z-40">
                     <div 
-                      className={`w-3.5 h-3.5 rounded-full border-2 transition-all cursor-pointer ${
+                      onClick={() => {
+                        if (onSelectTimelineItem) {
+                          if (node.hasOverlappingItems) {
+                            onSelectTimelineItem("OVERLAP");
+                          } else if (node.sku) {
+                            onSelectTimelineItem(node.sku);
+                          }
+                        } else if (node.sku) {
+                          const found = dashboardData.pendingItems.find(p => p.sku === node.sku) || {
+                            sku: node.sku,
+                            name: node.name || "示例服装衬衫",
+                            imageUrl: node.image || "dress_pink",
+                            category: "女童服饰",
+                            purchaseQty: node.qty || 300,
+                            storedQty: Math.floor((node.qty || 300) * 0.7),
+                            remainingQty: Math.floor((node.qty || 300) * 0.3),
+                            unitPrice: 65,
+                            amount: (node.qty || 300) * 65,
+                            dueDate: `2026-${node.date.replace("/", "-")}`,
+                            status: node.colorType === "red" ? "OVERDUE" : "PRODUCING",
+                            overdueDays: node.colorType === "red" ? 3 : 0,
+                            overdueDeduction: node.colorType === "red" ? 1200 : 0,
+                            qualityReturns: 0,
+                            qualityDeduction: 0,
+                            lastInboundTime: "2026-05-24",
+                            supplierName: "杭州织锦服饰有限公司"
+                          } as DetailedSkuInfo;
+                          setActiveDrawerItem(found);
+                        }
+                      }}
+                      className={`w-3.5 h-3.5 rounded-full border-2 transition-all cursor-pointer hover:scale-125 hover:shadow-sm ${
                         node.isToday ? "bg-[#0b1c30] border-[#0b1c30] scale-120 animate-pulse z-40" : 
                         node.colorType === "red" ? "bg-rose-500 border-rose-300" :
-                        node.colorType === "yellow" ? "bg-amber-400 border-amber-300" :
+                        node.colorType === "yellow" ? "bg-amber-440 border-amber-300" :
                         node.colorType === "green" ? "bg-emerald-500 border-emerald-450" :
                         node.hasOverlappingItems ? "bg-teal-700 border-teal-550" : "bg-white border-slate-350"
                       }`}
@@ -999,11 +1041,17 @@ export default function SupplierDashboardView({
                   </div>
 
                   {/* Date Label (Under the centerline) */}
-                  <span className={`text-[10.5px] font-mono font-bold mt-[26px] ${
-                    node.isToday ? "text-[#0b1c30] font-black" : "text-slate-400"
-                  }`}>
-                    {node.date}
-                  </span>
+                  <div className="absolute top-[171px] flex items-center justify-center">
+                    {node.isToday ? (
+                      <span className="px-2.5 py-0.5 bg-[#0b1c30] text-white font-mono text-[11px] font-black rounded-full shadow-sm">
+                        {node.date}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-mono font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                        {node.date}
+                      </span>
+                    )}
+                  </div>
 
                 </div>
               );
@@ -1021,7 +1069,7 @@ export default function SupplierDashboardView({
         <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 select-none">
           <div className="flex items-center gap-2">
             <span className="w-3 h-5 bg-emerald-600 rounded-xs inline-block" />
-            <h3 className="text-15px font-bold text-[#012b24] tracking-tight">Pending Delivery Items / 待交付商品明细</h3>
+            <h3 className="text-15px font-bold text-[#012b24] tracking-tight">待交付商品明细</h3>
           </div>
 
           <div className="flex items-center gap-3.5 w-full md:w-auto">
@@ -1071,15 +1119,15 @@ export default function SupplierDashboardView({
           <table className="w-full text-left border-collapse text-slate-650">
             <thead className="bg-slate-50/70 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase font-sans tracking-wider">
               <tr>
-                <th className="p-4 pl-6 text-center w-[90px]">Product / 商品</th>
-                <th className="p-4">SKU / Name / 款号</th>
-                <th className="p-4 text-center">Purchase Qty / 采购数</th>
-                <th className="p-4 text-center">Stored Qty / 已入库</th>
-                <th className="p-4 text-center">Remaining / 待入库</th>
-                <th className="p-4 text-right">Amount / 采购金额</th>
-                <th className="p-4 text-center">Due Date / 交付交期</th>
-                <th className="p-4 text-center">Status / 交付状态</th>
-                <th className="p-4 text-center pr-6">Action / 操作</th>
+                <th className="p-4 pl-6 text-center w-[90px]">商品</th>
+                <th className="p-4">款号 与 SKU名称</th>
+                <th className="p-4 text-center">采购数</th>
+                <th className="p-4 text-center">已入库</th>
+                <th className="p-4 text-center">待入库</th>
+                <th className="p-4 text-right">采购金额</th>
+                <th className="p-4 text-center">交付交期</th>
+                <th className="p-4 text-center">交付状态</th>
+                <th className="p-4 text-center pr-6">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100/60 font-medium">
@@ -1289,7 +1337,7 @@ export default function SupplierDashboardView({
                     <h4 className="text-13px font-bold text-slate-800 leading-tight">
                       {activeDrawerItem.name}
                     </h4>
-                    <span className="text-[10px] text-slate-450 block mt-1">
+                    <span className="text-[10px] text-slate-455 block mt-1">
                       品类分类：<span className="font-semibold text-slate-600">{activeDrawerItem.category}</span>
                     </span>
                     <span className="text-[9.5px] font-mono text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full inline-block mt-2 font-bold select-all">
@@ -1300,8 +1348,8 @@ export default function SupplierDashboardView({
 
                 {/* Main quantities grid card */}
                 <div className="space-y-3.5">
-                  <h5 className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">
-                    核心排进度对数 / Quantities Analysis
+                  <h5 className="text-[10.5px] font-black text-slate-400 tracking-wider">
+                    核心排进度对数
                   </h5>
                   <div className="grid grid-cols-3 gap-2.5">
                     
@@ -1336,13 +1384,13 @@ export default function SupplierDashboardView({
 
                 {/* Sub Financial Details */}
                 <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5.5 space-y-4">
-                  <h5 className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">
-                    采购单结算明细 / Cost Breakdown
+                  <h5 className="text-[10.5px] font-black text-slate-400 tracking-wider">
+                    采购单结算明细
                   </h5>
                   
                   <div className="space-y-2.5 text-xs">
                     <div className="flex items-center justify-between border-b border-dashed border-slate-200/80 pb-2.5">
-                      <span className="text-slate-450 font-bold">采购单价 (CNY / Cost)</span>
+                      <span className="text-slate-450 font-bold">采购单价 (人民币元)</span>
                       <span className="font-extrabold text-[#012b24] font-mono">
                         ¥{activeDrawerItem.unitPrice.toFixed(2)}
                       </span>
@@ -1366,28 +1414,28 @@ export default function SupplierDashboardView({
                       <span className="text-slate-455 font-bold">当前货期状态</span>
                       <div>
                         {activeDrawerItem.status === "OVERDUE" && (
-                          <span className="px-2 py-0.5 rounded-sm bg-rose-500 text-white font-bold font-mono text-[9px]">
-                            已超时 OVERDUE
+                          <span className="px-2 py-0.5 rounded-sm bg-rose-500 text-white font-bold text-[9px]">
+                            已超时
                           </span>
                         )}
                         {activeDrawerItem.status === "PRODUCING" && (
-                          <span className="px-2 py-0.5 rounded-sm bg-amber-450 text-white font-bold font-mono text-[9px]">
-                            生产中 PRODUCING
+                          <span className="px-2 py-0.5 rounded-sm bg-amber-450 text-white font-bold text-[9px]">
+                            生产中
                           </span>
                         )}
                         {activeDrawerItem.status === "STORING" && (
-                          <span className="px-2 py-0.5 rounded-sm bg-blue-600 text-white font-bold font-mono text-[9px]">
-                            部分入库 STORING
+                          <span className="px-2 py-0.5 rounded-sm bg-blue-600 text-white font-bold text-[9px]">
+                            部分入库
                           </span>
                         )}
                         {activeDrawerItem.status === "UPCOMING" && (
-                          <span className="px-2 py-0.5 rounded-sm bg-emerald-600 text-white font-bold font-mono text-[9px]">
-                            即将交付 UPCOMING
+                          <span className="px-2 py-0.5 rounded-sm bg-emerald-600 text-white font-bold text-[9px]">
+                            即将交付
                           </span>
                         )}
                         {activeDrawerItem.status === "COMPLETED" && (
-                          <span className="px-2 py-0.5 rounded-sm bg-slate-400 text-white font-bold font-mono text-[9px]">
-                            已结款 COMPLETED
+                          <span className="px-2 py-0.5 rounded-sm bg-slate-400 text-white font-bold text-[9px]">
+                            已结款
                           </span>
                         )}
                       </div>
@@ -1414,8 +1462,8 @@ export default function SupplierDashboardView({
 
                 {/* Damage / Complaint details */}
                 <div className="bg-slate-50/40 border border-slate-100 rounded-2xl p-5.5 space-y-4">
-                  <h5 className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">
-                    品质考核异常 / Quality Returns & Fees
+                  <h5 className="text-[10.5px] font-black text-slate-400 tracking-wider">
+                    品质考核异常
                   </h5>
                   <div className="grid grid-cols-2 gap-3 font-mono text-xs text-slate-650">
                     <div className="border-r border-slate-200/70 p-1">
@@ -1426,7 +1474,7 @@ export default function SupplierDashboardView({
                     </div>
                     <div className="p-1 pl-4">
                       <span>质量直接扣款:</span>
-                      <p className="text-sm font-extrabold text-rose-605 mt-1">
+                      <p className="text-sm font-extrabold text-rose-600 mt-1">
                         ¥{activeDrawerItem.qualityDeduction.toLocaleString()}
                       </p>
                     </div>
@@ -1438,8 +1486,8 @@ export default function SupplierDashboardView({
 
                 {/* Logistics Trace or Last Inbound */}
                 <div className="space-y-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                    最新过账记录 / Last Activity Log
+                  <span className="text-[10px] font-black text-slate-400 tracking-widest block">
+                    最新过账记录
                   </span>
                   <div className="p-3 bg-slate-55 rounded-xl border border-slate-100 text-xs text-slate-500 flex items-center gap-2 font-medium">
                     <Clock className="w-4 h-4 text-slate-400" />
